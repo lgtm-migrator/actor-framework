@@ -8,8 +8,10 @@
 #include "caf/actor.hpp"
 #include "caf/actor_system.hpp"
 #include "caf/callback.hpp"
+#include "caf/detail/atomic_ref_counted.hpp"
 #include "caf/detail/infer_actor_shell_ptr_type.hpp"
 #include "caf/detail/net_export.hpp"
+#include "caf/disposable.hpp"
 #include "caf/error.hpp"
 #include "caf/fwd.hpp"
 #include "caf/net/actor_shell.hpp"
@@ -17,7 +19,6 @@
 #include "caf/net/socket.hpp"
 #include "caf/net/socket_event_layer.hpp"
 #include "caf/net/typed_actor_shell.hpp"
-#include "caf/ref_counted.hpp"
 #include "caf/sec.hpp"
 
 #include <type_traits>
@@ -25,7 +26,8 @@
 namespace caf::net {
 
 /// Manages the lifetime of a single socket and handles any I/O events on it.
-class CAF_NET_EXPORT socket_manager : public ref_counted {
+class CAF_NET_EXPORT socket_manager : public detail::atomic_ref_counted,
+                                      public disposable_impl {
 public:
   // -- member types -----------------------------------------------------------
 
@@ -73,10 +75,6 @@ public:
     };
     return make_actor_shell<Handle>(std::move(f));
   }
-
-  /// Returns a thread-safe disposer for stopping the socket manager from an
-  /// outside context.
-  disposable make_disposer();
 
   // -- properties -------------------------------------------------------------
 
@@ -193,6 +191,16 @@ public:
   /// @param code The error code as reported by the operating system.
   void handle_error(sec code);
 
+  // -- implementation of disposable_impl --------------------------------------
+
+  void dispose() override;
+
+  bool disposed() const noexcept override;
+
+  void ref_disposable() const noexcept override;
+
+  void deref_disposable() const noexcept override;
+
 private:
   // -- utility functions ------------------------------------------------------
 
@@ -204,7 +212,11 @@ private:
   /// the socket in its destructor.
   socket fd_;
 
-  /// Points to the multiplexer that owns this manager.
+  /// Points to the multiplexer that executes this manager. Note: we do not need
+  /// to increase the reference count for the multiplexer, because the
+  /// multiplexer owns all managers in the sense that calling any member
+  /// function on a socket manager may not occur if the actor system has shut
+  /// down (and the multiplexer is part of the actor system).
   multiplexer* mpx_;
 
   /// Stores flags for the socket file descriptor.
@@ -212,6 +224,8 @@ private:
 
   /// Stores the event handler that operators on the socket file descriptor.
   event_handler_ptr handler_;
+
+  std::atomic<bool> disposed_;
 };
 
 /// @relates socket_manager

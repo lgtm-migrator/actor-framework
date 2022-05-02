@@ -9,6 +9,8 @@
 #include <thread>
 
 #include "caf/action.hpp"
+#include "caf/async/execution_context.hpp"
+#include "caf/detail/atomic_ref_counted.hpp"
 #include "caf/detail/net_export.hpp"
 #include "caf/net/fwd.hpp"
 #include "caf/net/operation.hpp"
@@ -28,7 +30,8 @@ namespace caf::net {
 class pollset_updater;
 
 /// Multiplexes any number of ::socket_manager objects with a ::socket.
-class CAF_NET_EXPORT multiplexer {
+class CAF_NET_EXPORT multiplexer : public detail::atomic_ref_counted,
+                                   public async::execution_context {
 public:
   // -- member types -----------------------------------------------------------
 
@@ -55,13 +58,18 @@ public:
 
   // -- constructors, destructors, and assignment operators --------------------
 
+  ~multiplexer();
+
+  // -- factories --------------------------------------------------------------
+
   /// @param parent Points to the owning middleman instance. May be `nullptr`
   ///               only for the purpose of unit testing if no @ref
   ///               socket_manager requires access to the @ref middleman or the
   ///               @ref actor_system.
-  explicit multiplexer(middleman* parent);
-
-  ~multiplexer();
+  static multiplexer_ptr make(middleman* parent) {
+    auto ptr = new multiplexer(parent);
+    return multiplexer_ptr{ptr, false};
+  }
 
   // -- initialization ---------------------------------------------------------
 
@@ -87,34 +95,33 @@ public:
   /// Computes the current mask for the manager. Mostly useful for testing.
   operation mask_of(const socket_manager_ptr& mgr);
 
+  // -- implementation of execution_context ------------------------------------
+
+  void ref_execution_context() const noexcept override;
+
+  void deref_execution_context() const noexcept override;
+
+  void schedule(action what) override;
+
+  void watch(disposable what) override;
+
   // -- thread-safe signaling --------------------------------------------------
 
   /// Schedules a call to `mgr->handle_error(sec::disposed)`.
   /// @thread-safe
-  void dispose(const socket_manager_ptr& mgr);
+  void dispose(socket_manager_ptr mgr);
 
   /// Stops further reading by `mgr`.
   /// @thread-safe
-  void shutdown_reading(const socket_manager_ptr& mgr);
+  void shutdown_reading(socket_manager_ptr mgr);
 
   /// Stops further writing by `mgr`.
   /// @thread-safe
-  void shutdown_writing(const socket_manager_ptr& mgr);
-
-  /// Schedules an action for execution on this multiplexer.
-  /// @thread-safe
-  void schedule(const action& what);
-
-  /// Schedules an action for execution on this multiplexer.
-  /// @thread-safe
-  template <class F>
-  void schedule_fn(F f) {
-    schedule(make_action(std::move(f)));
-  }
+  void shutdown_writing(socket_manager_ptr mgr);
 
   /// Registers `mgr` for initialization in the multiplexer's thread.
   /// @thread-safe
-  void init(const socket_manager_ptr& mgr);
+  void init(socket_manager_ptr mgr);
 
   /// Signals the multiplexer to initiate shutdown.
   /// @thread-safe
@@ -176,6 +183,7 @@ protected:
 
   /// Writes `opcode` and pointer to `mgr` the the pipe for handling an event
   /// later via the pollset updater.
+  /// @warning assumes ownership of @p ptr.
   template <class T>
   void write_to_pipe(uint8_t opcode, T* ptr);
 
@@ -217,7 +225,14 @@ protected:
   /// Signals whether shutdown has been requested.
   bool shutting_down_ = false;
 
+  /// Keeps track of watched disposables.
+  std::vector<disposable> watched_;
+
 private:
+  // -- constructors, destructors, and assignment operators --------------------
+
+  explicit multiplexer(middleman* parent);
+
   // -- internal callbacks the pollset updater ---------------------------------
 
   void do_shutdown();

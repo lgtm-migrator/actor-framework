@@ -187,9 +187,9 @@ SCENARIO("ssl::transport::make_client performs the client handshake") {
                        key_1_pem_path};
     WHEN("connecting as a client to an SSL server") {
       THEN("CAF transparently calls SSL_connect") {
-        net::multiplexer mpx{nullptr};
-        mpx.set_thread_id();
-        std::ignore = mpx.init();
+        auto mpx = net::multiplexer::make(nullptr);
+        mpx->set_thread_id();
+        std::ignore = mpx->init();
         auto ctx = unbox(ssl::context::make_client(ssl::tls::any));
         auto conn = unbox(ctx.new_connection(client_fd));
         auto done = std::make_shared<bool>(false);
@@ -197,12 +197,12 @@ SCENARIO("ssl::transport::make_client performs the client handshake") {
         auto mock = mock_application::make(done, buf);
         auto transport = ssl::transport::make_client(std::move(conn),
                                                      std::move(mock));
-        auto mgr = net::socket_manager::make(&mpx, client_fd,
+        auto mgr = net::socket_manager::make(mpx.get(), client_fd,
                                              std::move(transport));
-        mpx.init(mgr);
-        mpx.apply_updates();
+        mpx->init(mgr);
+        mpx->apply_updates();
         while (!*done)
-          mpx.poll_once(true);
+          mpx->poll_once(true);
         if (CHECK_EQ(buf->size(), 16u)) { // 4x 32-bit integers
           caf::binary_deserializer src{nullptr, *buf};
           for (int i = 0; i < 4; ++i) {
@@ -225,9 +225,9 @@ SCENARIO("ssl::transport::make_server performs the server handshake") {
     std::thread client{dummy_tls_client, client_fd};
     WHEN("acting as the SSL server") {
       THEN("CAF transparently calls SSL_accept") {
-        net::multiplexer mpx{nullptr};
-        mpx.set_thread_id();
-        std::ignore = mpx.init();
+        auto mpx = net::multiplexer::make(nullptr);
+        mpx->set_thread_id();
+        std::ignore = mpx->init();
         auto ctx = unbox(ssl::context::make_server(ssl::tls::any));
         REQUIRE(ctx.use_certificate_from_file(cert_1_pem_path, //
                                               ssl::format::pem));
@@ -239,12 +239,12 @@ SCENARIO("ssl::transport::make_server performs the server handshake") {
         auto mock = mock_application::make(done, buf);
         auto transport = ssl::transport::make_server(std::move(conn),
                                                      std::move(mock));
-        auto mgr = net::socket_manager::make(&mpx, server_fd,
+        auto mgr = net::socket_manager::make(mpx.get(), server_fd,
                                              std::move(transport));
-        mpx.init(mgr);
-        mpx.apply_updates();
+        mpx->init(mgr);
+        mpx->apply_updates();
         while (!*done)
-          mpx.poll_once(true);
+          mpx->poll_once(true);
         if (CHECK_EQ(buf->size(), 16u)) { // 4x 32-bit integers
           caf::binary_deserializer src{nullptr, *buf};
           for (int i = 0; i < 4; ++i) {

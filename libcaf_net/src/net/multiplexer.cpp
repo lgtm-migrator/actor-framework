@@ -165,46 +165,61 @@ operation multiplexer::mask_of(const socket_manager_ptr& mgr) {
     return to_operation(mgr, std::nullopt);
 }
 
+// -- implementation of execution_context --------------------------------------
+
+void multiplexer::ref_execution_context() const noexcept {
+  ref();
+}
+
+void multiplexer::deref_execution_context() const noexcept {
+  deref();
+}
+
+void multiplexer::schedule(action what) {
+  CAF_LOG_TRACE("");
+  auto ptr = std::move(what).as_intrusive_ptr().release();
+  write_to_pipe(pollset_updater::code::run_action, ptr);
+}
+
+void multiplexer::watch(disposable what) {
+  watched_.emplace_back(what);
+}
+
 // -- thread-safe signaling ----------------------------------------------------
 
-void multiplexer::dispose(const socket_manager_ptr& mgr) {
+void multiplexer::dispose(socket_manager_ptr mgr) {
   CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
   if (std::this_thread::get_id() == tid_) {
     do_dispose(mgr);
   } else {
-    write_to_pipe(pollset_updater::code::dispose_manager, mgr.get());
+    write_to_pipe(pollset_updater::code::dispose_manager, mgr.release());
   }
 }
 
-void multiplexer::shutdown_reading(const socket_manager_ptr& mgr) {
+void multiplexer::shutdown_reading(socket_manager_ptr mgr) {
   CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
   if (std::this_thread::get_id() == tid_) {
     do_shutdown_reading(mgr);
   } else {
-    write_to_pipe(pollset_updater::code::shutdown_reading, mgr.get());
+    write_to_pipe(pollset_updater::code::shutdown_reading, mgr.release());
   }
 }
 
-void multiplexer::shutdown_writing(const socket_manager_ptr& mgr) {
+void multiplexer::shutdown_writing(socket_manager_ptr mgr) {
   CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
   if (std::this_thread::get_id() == tid_) {
     do_shutdown_writing(mgr);
   } else {
-    write_to_pipe(pollset_updater::code::shutdown_writing, mgr.get());
+    write_to_pipe(pollset_updater::code::shutdown_writing, mgr.release());
   }
 }
 
-void multiplexer::schedule(const action& what) {
-  CAF_LOG_TRACE("");
-  write_to_pipe(pollset_updater::code::run_action, what.ptr());
-}
-
-void multiplexer::init(const socket_manager_ptr& mgr) {
+void multiplexer::init(socket_manager_ptr mgr) {
   CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
   if (std::this_thread::get_id() == tid_) {
     do_init(mgr);
   } else {
-    write_to_pipe(pollset_updater::code::init_manager, mgr.get());
+    write_to_pipe(pollset_updater::code::init_manager, mgr.release());
   }
 }
 
@@ -358,8 +373,10 @@ void multiplexer::run() {
   // need to block the signal at thread level since some APIs (such as OpenSSL)
   // are unsafe to call otherwise.
   block_sigpipe();
-  while (!shutting_down_ || pollset_.size() > 1)
+  while (!shutting_down_ || pollset_.size() > 1 || !watched_.empty()) {
     poll_once(true);
+    disposable::erase_disposed(watched_);
+  }
   // Close the pipe to block any future event.
   std::lock_guard<std::mutex> guard{write_lock_};
   if (write_handle_ != invalid_socket) {
@@ -427,9 +444,7 @@ multiplexer::poll_update& multiplexer::update_for(socket_manager* mgr) {
 template <class T>
 void multiplexer::write_to_pipe(uint8_t opcode, T* ptr) {
   pollset_updater::msg_buf buf;
-  if (ptr) {
-    intrusive_ptr_add_ref(ptr);
-  }
+  // Note: no intrusive_ptr_add_ref(ptr) since we take ownership of `ptr`.
   buf[0] = static_cast<std::byte>(opcode);
   auto value = reinterpret_cast<intptr_t>(ptr);
   memcpy(buf.data() + 1, &value, sizeof(intptr_t));

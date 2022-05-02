@@ -177,12 +177,12 @@ SCENARIO("calling suspend_reading temporarily halts receiving of messages") {
         read(fd1, rd_buf);
       }
     }};
-    net::multiplexer mpx{nullptr};
-    mpx.set_thread_id();
-    if (auto err = mpx.init())
-      FAIL("mpx.init failed: " << err);
-    mpx.apply_updates();
-    REQUIRE_EQ(mpx.num_socket_managers(), 1u);
+    auto mpx = net::multiplexer::make(nullptr);
+    mpx->set_thread_id();
+    if (auto err = mpx->init())
+      FAIL("mpx->init failed: " << err);
+    mpx->apply_updates();
+    REQUIRE_EQ(mpx->num_socket_managers(), 1u);
     if (auto err = net::nonblocking(fd2, true))
       CAF_FAIL("nonblocking returned an error: " << err);
     auto buf = std::make_shared<string_list>();
@@ -190,15 +190,15 @@ SCENARIO("calling suspend_reading temporarily halts receiving of messages") {
     auto app_ptr = app.get();
     auto framing = net::length_prefix_framing::make(std::move(app));
     auto transport = net::stream_transport::make(fd2, std::move(framing));
-    auto mgr = net::socket_manager::make(&mpx, fd2, std::move(transport));
+    auto mgr = net::socket_manager::make(mpx.get(), fd2, std::move(transport));
     CHECK_EQ(mgr->init(settings{}), none);
-    mpx.apply_updates();
-    REQUIRE_EQ(mpx.num_socket_managers(), 2u);
-    CHECK_EQ(mpx.mask_of(mgr), net::operation::read);
+    mpx->apply_updates();
+    REQUIRE_EQ(mpx->num_socket_managers(), 2u);
+    CHECK_EQ(mpx->mask_of(mgr), net::operation::read);
     WHEN("the app calls suspend_reading") {
-      while (mpx.num_socket_managers() > 1u)
-        mpx.poll_once(true);
-      CHECK_EQ(mpx.mask_of(mgr), net::operation::none);
+      while (mpx->num_socket_managers() > 1u)
+        mpx->poll_once(true);
+      CHECK_EQ(mpx->mask_of(mgr), net::operation::none);
       if (CHECK_EQ(buf->size(), 3u)) {
         CHECK_EQ(buf->at(0), "first");
         CHECK_EQ(buf->at(1), "second");
@@ -206,11 +206,11 @@ SCENARIO("calling suspend_reading temporarily halts receiving of messages") {
       }
       THEN("users can resume it manually") {
         app_ptr->continue_reading();
-        mpx.apply_updates();
-        mpx.poll_once(true);
-        CHECK_EQ(mpx.mask_of(mgr), net::operation::read);
-        while (mpx.num_socket_managers() > 1u)
-          mpx.poll_once(true);
+        mpx->apply_updates();
+        mpx->poll_once(true);
+        CHECK_EQ(mpx->mask_of(mgr), net::operation::read);
+        while (mpx->num_socket_managers() > 1u)
+          mpx->poll_once(true);
         if (CHECK_EQ(buf->size(), 5u)) {
           CHECK_EQ(buf->at(0), "first");
           CHECK_EQ(buf->at(1), "second");

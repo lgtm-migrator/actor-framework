@@ -31,11 +31,17 @@ void server::suspend_reading() {
   down_->configure_read(receive_policy::stop());
 }
 
-bool server::send_header(status code, const header_fields_map& fields) {
+void server::begin_header(status code) {
   down_->begin_output();
-  v1::write_header(code, fields, down_->output_buffer());
-  down_->end_output();
-  return true;
+  v1::begin_header(code, down_->output_buffer());
+}
+
+void server::add_header_field(std::string_view key, std::string_view val) {
+  v1::add_header_field(key, val, down_->output_buffer());
+}
+
+bool server::end_header() {
+  return v1::end_header(down_->output_buffer()) && down_->end_output();
 }
 
 bool server::send_payload(const_byte_span bytes) {

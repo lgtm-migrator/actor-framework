@@ -124,45 +124,45 @@ private:
 };
 
 struct fixture {
-  fixture() : mpx(nullptr) {
+  fixture() : mpx(net::multiplexer::make(nullptr)) {
     manager_count = std::make_shared<std::atomic<size_t>>(0);
-    mpx.set_thread_id();
+    mpx->set_thread_id();
   }
 
   ~fixture() {
-    mpx.shutdown();
+    mpx->shutdown();
     exhaust();
     REQUIRE_EQ(*manager_count, 0u);
   }
 
   void exhaust() {
-    mpx.apply_updates();
-    while (mpx.poll_once(false))
+    mpx->apply_updates();
+    while (mpx->poll_once(false))
       ; // Repeat.
   }
 
   void apply_updates() {
-    mpx.apply_updates();
+    mpx->apply_updates();
   }
 
   std::pair<mock_event_layer*, net::socket_manager_ptr>
   make_manager(net::stream_socket fd, std::string name) {
     auto mock = mock_event_layer::make(fd, std::move(name), manager_count);
     auto mock_ptr = mock.get();
-    auto mgr = net::socket_manager::make(&mpx, fd, std::move(mock));
+    auto mgr = net::socket_manager::make(mpx.get(), fd, std::move(mock));
     std::ignore = mgr->init(settings{});
     return {mock_ptr, std::move(mgr)};
   }
 
   void init() {
-    if (auto err = mpx.init())
-      FAIL("mpx.init failed: " << err);
+    if (auto err = mpx->init())
+      FAIL("mpx->init failed: " << err);
     exhaust();
   }
 
   shared_count manager_count;
 
-  net::multiplexer mpx;
+  net::multiplexer_ptr mpx;
 };
 
 } // namespace
@@ -173,7 +173,7 @@ SCENARIO("the multiplexer has no socket managers after default construction") {
   GIVEN("a default constructed multiplexer") {
     WHEN("querying the number of socket managers") {
       THEN("the result is 0") {
-        CHECK_EQ(mpx.num_socket_managers(), 0u);
+        CHECK_EQ(mpx->num_socket_managers(), 0u);
       }
     }
   }
@@ -183,10 +183,10 @@ SCENARIO("the multiplexer constructs the pollset updater while initializing") {
   GIVEN("an initialized multiplexer") {
     WHEN("querying the number of socket managers") {
       THEN("the result is 1") {
-        CHECK_EQ(mpx.num_socket_managers(), 0u);
-        CHECK_EQ(mpx.init(), none);
+        CHECK_EQ(mpx->num_socket_managers(), 0u);
+        CHECK_EQ(mpx->init(), none);
         exhaust();
-        CHECK_EQ(mpx.num_socket_managers(), 1u);
+        CHECK_EQ(mpx->num_socket_managers(), 1u);
       }
     }
   }
@@ -202,7 +202,7 @@ SCENARIO("socket managers can register for read and write operations") {
       alice_mgr->register_reading();
       bob_mgr->register_reading();
       apply_updates();
-      CHECK_EQ(mpx.num_socket_managers(), 3u);
+      CHECK_EQ(mpx->num_socket_managers(), 3u);
       THEN("the multiplexer runs callbacks on socket activity") {
         alice->send("Hello Bob!");
         alice_mgr->register_writing();
@@ -218,9 +218,9 @@ SCENARIO("a multiplexer terminates its thread after shutting down") {
     init();
     auto go_time = std::make_shared<barrier>(2);
     auto mpx_thread = std::thread{[this, go_time] {
-      mpx.set_thread_id();
+      mpx->set_thread_id();
       go_time->arrive_and_wait();
-      mpx.run();
+      mpx->run();
     }};
     go_time->arrive_and_wait();
     auto [alice_fd, bob_fd] = unbox(net::make_stream_socket_pair());
@@ -229,7 +229,7 @@ SCENARIO("a multiplexer terminates its thread after shutting down") {
     alice_mgr->register_reading();
     bob_mgr->register_reading();
     WHEN("calling shutdown on the multiplexer") {
-      mpx.shutdown();
+      mpx->shutdown();
       THEN("the thread terminates and all socket managers get shut down") {
         mpx_thread.join();
         CHECK(alice_mgr->read_closed());
@@ -251,7 +251,7 @@ SCENARIO("a multiplexer terminates its thread after shutting down") {
 //       alice->register_reading();
 //       bob->register_reading();
 //       apply_updates();
-//       CHECK_EQ(mpx.num_socket_managers(), 3u);
+//       CHECK_EQ(mpx->num_socket_managers(), 3u);
 //       THEN("the multiplexer swaps out the socket managers for the socket") {
 //         alice->send("Hello Bob!");
 //         alice->register_writing();

@@ -48,9 +48,8 @@ struct udp_datagram_socket;
 
 // -- smart pointer aliases ----------------------------------------------------
 
-using multiplexer_ptr = std::shared_ptr<multiplexer>;
+using multiplexer_ptr = intrusive_ptr<multiplexer>;
 using socket_manager_ptr = intrusive_ptr<socket_manager>;
-using weak_multiplexer_ptr = std::weak_ptr<multiplexer>;
 
 // -- miscellaneous aliases ----------------------------------------------------
 

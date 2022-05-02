@@ -60,7 +60,7 @@ disposable serve(actor_system& sys, Socket fd) {
   auto impl = impl_t::make(fd, 0, std::move(factory));
   auto mgr = socket_manager::make(mpx, fd, std::move(impl));
   mpx->init(mgr);
-  return mgr->make_disposer();
+  return mgr->as_disposable();
 }
 
 } // namespace caf::net::prometheus

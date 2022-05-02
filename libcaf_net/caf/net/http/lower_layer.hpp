@@ -11,6 +11,8 @@
 #include "caf/net/generic_lower_layer.hpp"
 #include "caf/net/http/fwd.hpp"
 
+#include <string_view>
+
 namespace caf::net::http {
 
 /// Parses HTTP requests and passes them to the upper layer.
@@ -24,8 +26,15 @@ public:
   /// Stops reading messages until calling `request_messages`.
   virtual void suspend_reading() = 0;
 
-  /// Sends the next header to the client.
-  virtual bool send_header(status code, const header_fields_map& fields) = 0;
+  /// Starts writing an HTTP header.
+  virtual void begin_header(status code) = 0;
+
+  /// Adds a header field. Users may only call this function between
+  /// `begin_header` and `end_header`.
+  virtual void add_header_field(std::string_view key, std::string_view val) = 0;
+
+  /// Seals the header and transports it to the client.
+  virtual bool end_header() = 0;
 
   /// Sends the payload after the header.
   virtual bool send_payload(const_byte_span bytes) = 0;

@@ -15,7 +15,7 @@ namespace caf::net {
 
 socket_manager::socket_manager(multiplexer* mpx, socket fd,
                                event_handler_ptr handler)
-  : fd_(fd), mpx_(mpx), handler_(std::move(handler)) {
+  : fd_(fd), mpx_(mpx), handler_(std::move(handler)), disposed_(false) {
   CAF_ASSERT(fd_ != invalid_socket);
   CAF_ASSERT(mpx_ != nullptr);
   CAF_ASSERT(handler_ != nullptr);
@@ -31,50 +31,8 @@ socket_manager::~socket_manager() {
 socket_manager_ptr socket_manager::make(multiplexer* mpx, socket handle,
                                         event_handler_ptr handler) {
   CAF_ASSERT(mpx != nullptr);
-  return make_counted<socket_manager>(mpx, handle, std::move(handler));
-}
-
-namespace {
-
-class disposer : public detail::atomic_ref_counted, public disposable_impl {
-public:
-  disposer(multiplexer* mpx, socket_manager_ptr mgr)
-    : mpx_(mpx), mgr_(std::move(mgr)) {
-    // nop
-  }
-
-  void dispose() {
-    std::unique_lock guard{mtx_};
-    if (mpx_) {
-      mpx_->dispose(mgr_);
-      mpx_ = nullptr;
-      mgr_ = nullptr;
-    }
-  }
-
-  bool disposed() const noexcept {
-    std::unique_lock guard{mtx_};
-    return mpx_ == nullptr;
-  }
-
-  void ref_disposable() const noexcept {
-    ref();
-  }
-
-  void deref_disposable() const noexcept {
-    deref();
-  }
-
-private:
-  mutable std::mutex mtx_;
-  multiplexer* mpx_;
-  socket_manager_ptr mgr_;
-};
-
-} // namespace
-
-disposable socket_manager::make_disposer() {
-  return disposable{make_counted<disposer>(mpx_, this)};
+  return make_counted<socket_manager>(std::move(mpx), handle,
+                                      std::move(handler));
 }
 
 // -- properties ---------------------------------------------------------------
@@ -129,6 +87,7 @@ void socket_manager::shutdown_write() {
 void socket_manager::shutdown() {
   flags_.read_closed = true;
   flags_.write_closed = true;
+  disposed_ = true;
   deregister();
 }
 
@@ -158,11 +117,15 @@ void socket_manager::schedule(action what) {
 void socket_manager::close_read() noexcept {
   // TODO: extend transport API for closing read operations.
   flags_.read_closed = true;
+  if (flags_.write_closed)
+    disposed_ = true;
 }
 
 void socket_manager::close_write() noexcept {
   // TODO: extend transport API for closing write operations.
   flags_.write_closed = true;
+  if (flags_.read_closed)
+    disposed_ = true;
 }
 
 error socket_manager::init(const settings& cfg) {
@@ -186,7 +149,27 @@ void socket_manager::handle_error(sec code) {
   if (handler_) {
     handler_->abort(make_error(code));
     handler_ = nullptr;
+    disposed_ = true;
   }
+}
+
+// -- implementation of disposable_impl ----------------------------------------
+
+void socket_manager::dispose() {
+  if (!disposed())
+    mpx_->dispose(this);
+}
+
+bool socket_manager::disposed() const noexcept {
+  return disposed_.load();
+}
+
+void socket_manager::ref_disposable() const noexcept {
+  ref();
+}
+
+void socket_manager::deref_disposable() const noexcept {
+  deref();
 }
 
 // -- utility functions --------------------------------------------------------

@@ -6,6 +6,7 @@
 
 #include "caf/byte_span.hpp"
 #include "caf/detail/append_hex.hpp"
+#include "caf/detail/net_export.hpp"
 #include "caf/error.hpp"
 #include "caf/logger.hpp"
 #include "caf/net/connection_acceptor.hpp"
@@ -30,7 +31,8 @@
 namespace caf::net::http {
 
 /// Implements the server part for the HTTP Protocol as defined in RFC 7231.
-class server : public stream_oriented::upper_layer, public http::lower_layer {
+class CAF_NET_EXPORT server : public stream_oriented::upper_layer,
+                              public http::lower_layer {
 public:
   // -- member types -----------------------------------------------------------
 
@@ -85,7 +87,11 @@ public:
 
   void suspend_reading() override;
 
-  bool send_header(status code, const header_fields_map& fields) override;
+  void begin_header(status code) override;
+
+  void add_header_field(std::string_view key, std::string_view val) override;
+
+  bool end_header() override;
 
   bool send_payload(const_byte_span bytes) override;
 

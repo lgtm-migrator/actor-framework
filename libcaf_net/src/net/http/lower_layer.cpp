@@ -21,10 +21,10 @@ lower_layer::~lower_layer() {
 bool lower_layer::send_response(status code, std::string_view content_type,
                                 const_byte_span content) {
   auto content_size = std::to_string(content.size());
-  header_fields_map fields;
-  fields.emplace("Content-Type"sv, content_type);
-  fields.emplace("Content-Length"sv, content_size);
-  return send_header(code, fields) && send_payload(content);
+  begin_header(code);
+  add_header_field("Content-Type"sv, content_type);
+  add_header_field("Content-Length"sv, content_size);
+  return end_header();
 }
 
 bool lower_layer::send_response(status code, std::string_view content_type,

@@ -144,10 +144,10 @@ public:
 };
 
 struct fixture : test_coordinator_fixture<> {
-  fixture() : mm(sys), mpx(&mm) {
-    mpx.set_thread_id();
-    if (auto err = mpx.init())
-      CAF_FAIL("mpx.init() failed: " << err);
+  fixture() : mm(sys), mpx(net::multiplexer::make(&mm)) {
+    mpx->set_thread_id();
+    if (auto err = mpx->init())
+      CAF_FAIL("mpx->init() failed: " << err);
     auto sockets = unbox(net::make_stream_socket_pair());
     self_socket_guard.reset(sockets.first);
     testee_socket_guard.reset(sockets.second);
@@ -162,8 +162,8 @@ struct fixture : test_coordinator_fixture<> {
     if (!predicate())
       return;
     for (size_t i = 0; i < 1000; ++i) {
-      mpx.apply_updates();
-      mpx.poll_once(false);
+      mpx->apply_updates();
+      mpx->poll_once(false);
       std::byte tmp[1024];
       auto bytes = read(self_socket_guard.socket(), make_span(tmp, 1024));
       if (bytes > 0)
@@ -182,7 +182,7 @@ struct fixture : test_coordinator_fixture<> {
   }
 
   net::middleman mm;
-  net::multiplexer mpx;
+  net::multiplexer_ptr mpx;
   net::socket_guard<net::stream_socket> self_socket_guard;
   net::socket_guard<net::stream_socket> testee_socket_guard;
   byte_buffer recv_buf;
@@ -201,7 +201,7 @@ CAF_TEST(actor shells expose their mailbox to their owners) {
   auto app_uptr = app_t::make();
   auto app = app_uptr.get();
   auto transport = net::stream_transport::make(fd, std::move(app_uptr));
-  auto mgr = net::socket_manager::make(&mpx, fd, std::move(transport));
+  auto mgr = net::socket_manager::make(mpx.get(), fd, std::move(transport));
   if (auto err = mgr->init(content(cfg)))
     CAF_FAIL("mgr->init() failed: " << err);
   auto hdl = app->self.as_actor();
@@ -222,7 +222,7 @@ CAF_TEST(actor shells can send requests and receive responses) {
   auto app_uptr = app_t::make(worker);
   auto app = app_uptr.get();
   auto transport = net::stream_transport::make(fd, std::move(app_uptr));
-  auto mgr = net::socket_manager::make(&mpx, fd, std::move(transport));
+  auto mgr = net::socket_manager::make(mpx.get(), fd, std::move(transport));
   if (auto err = mgr->init(content(cfg)))
     CAF_FAIL("mgr->init() failed: " << err);
   send(input);

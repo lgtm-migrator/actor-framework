@@ -39,6 +39,9 @@ caf_add_component(
     src/net/http/header.cpp
     src/net/http/lower_layer.cpp
     src/net/http/method.cpp
+    src/net/http/request.cpp
+    src/net/http/response.cpp
+    src/net/http/serve.cpp
     src/net/http/server.cpp
     src/net/http/status.cpp
     src/net/http/upper_layer.cpp

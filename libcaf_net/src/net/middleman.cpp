@@ -55,7 +55,8 @@ void middleman::init_global_meta_objects() {
   // nop
 }
 
-middleman::middleman(actor_system& sys) : sys_(sys), mpx_(this) {
+middleman::middleman(actor_system& sys)
+  : sys_(sys), mpx_(multiplexer::make(this)) {
   // nop
 }
 
@@ -69,28 +70,28 @@ void middleman::start() {
       CAF_SET_LOGGER_SYS(&sys_);
       detail::set_thread_name("caf.net.mpx");
       sys_.thread_started();
-      mpx_.set_thread_id();
+      mpx_->set_thread_id();
       launch_background_tasks(sys_);
-      mpx_.run();
+      mpx_->run();
       sys_.thread_terminates();
     }};
   } else {
-    mpx_.set_thread_id();
+    mpx_->set_thread_id();
   }
 }
 
 void middleman::stop() {
-  mpx_.shutdown();
+  mpx_->shutdown();
   if (mpx_thread_.joinable())
     mpx_thread_.join();
   else
-    mpx_.run();
+    mpx_->run();
 }
 
 void middleman::init(actor_system_config& cfg) {
-  if (auto err = mpx_.init()) {
-    CAF_LOG_ERROR("mpx_.init() failed: " << err);
-    CAF_RAISE_ERROR("mpx_.init() failed");
+  if (auto err = mpx_->init()) {
+    CAF_LOG_ERROR("mpx_->init() failed: " << err);
+    CAF_RAISE_ERROR("mpx_->init() failed");
   }
   if (auto node_uri = get_if<uri>(&cfg, "caf.middleman.this-node")) {
     auto this_node = make_node_id(std::move(*node_uri));
