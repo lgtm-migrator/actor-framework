@@ -40,6 +40,7 @@ std::unique_ptr<client> client::make(handshake_ptr hs, upper_layer_ptr up) {
 
 error client::init(socket_manager* owner, stream_oriented::lower_layer* down,
                    const settings& cfg) {
+  CAF_ASSERT(owner != nullptr);
   CAF_ASSERT(hs_ != nullptr);
   framing_.init(owner, down);
   if (!hs_->has_mandatory_fields())
@@ -47,6 +48,7 @@ error client::init(socket_manager* owner, stream_oriented::lower_layer* down,
                       "handshake data lacks mandatory fields");
   if (!hs_->has_valid_key())
     hs_->randomize_key();
+  owner_ = owner;
   cfg_ = cfg;
   down->begin_output();
   hs_->write_http_1_request(down->output_buffer());

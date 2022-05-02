@@ -27,7 +27,7 @@ namespace caf::net::web_socket {
 /// 6455. Initially, the layer performs the WebSocket handshake. Once completed,
 /// this layer decodes RFC 6455 frames and forwards binary and text messages to
 /// `UpperLayer`.
-class client : public stream_oriented::upper_layer {
+class CAF_NET_EXPORT client : public stream_oriented::upper_layer {
 public:
   // -- member types -----------------------------------------------------------
 

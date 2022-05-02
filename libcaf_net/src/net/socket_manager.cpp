@@ -30,6 +30,7 @@ socket_manager::~socket_manager() {
 
 socket_manager_ptr socket_manager::make(multiplexer* mpx, socket handle,
                                         event_handler_ptr handler) {
+  CAF_ASSERT(mpx != nullptr);
   return make_counted<socket_manager>(mpx, handle, std::move(handler));
 }
 

@@ -87,6 +87,7 @@ public:
 
   error init(net::socket_manager* mgr, web_socket::lower_layer* down,
              const settings& cfg) override {
+    CAF_ASSERT(mgr != nullptr);
     down_ = down;
     auto [err, pull, push] = conn_->on_request(cfg);
     if (!err) {

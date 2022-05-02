@@ -52,6 +52,7 @@ public:
 
   void handle_read_event() override {
     CAF_LOG_TRACE("");
+    CAF_ASSERT(owner_ != nullptr);
     if (auto x = accept(fd_)) {
       socket_manager_ptr child = factory_.make(owner_->mpx_ptr(), *x);
       if (!child) {

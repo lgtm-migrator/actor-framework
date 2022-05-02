@@ -25,7 +25,7 @@
 namespace caf::net::web_socket {
 
 /// Implements the WebSocket framing protocol as defined in RFC-6455.
-class framing : public web_socket::lower_layer {
+class CAF_NET_EXPORT framing : public web_socket::lower_layer {
 public:
   // -- member types -----------------------------------------------------------
 

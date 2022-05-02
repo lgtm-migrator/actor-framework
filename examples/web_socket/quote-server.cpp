@@ -102,7 +102,8 @@ int caf_main(caf::actor_system& sys, const config& cfg) {
   // Open up a TCP port for incoming connections.
   auto port = caf::get_or(cfg, "port", default_port);
   cn::tcp_accept_socket fd;
-  if (auto maybe_fd = cn::make_tcp_accept_socket({caf::ipv4_address{}, port})) {
+  if (auto maybe_fd = cn::make_tcp_accept_socket({caf::ipv4_address{}, port},
+                                                 true)) {
     std::cout << "*** started listening for incoming connections on port "
               << port << '\n';
     fd = std::move(*maybe_fd);

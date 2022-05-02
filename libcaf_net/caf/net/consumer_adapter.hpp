@@ -56,7 +56,9 @@ public:
 
   static ptr_type make(buf_ptr buf, socket_manager_ptr mgr, action do_wakeup) {
     if (buf) {
-      auto adapter = ptr_type{new consumer_adapter(buf, mgr,
+      CAF_ASSERT(mgr);
+      CAF_ASSERT(do_wakeup);
+      auto adapter = ptr_type{new consumer_adapter(buf, std::move(mgr),
                                                    std::move(do_wakeup)), //
                               false};
       buf->set_consumer(adapter);
