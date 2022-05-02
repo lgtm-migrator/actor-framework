@@ -146,7 +146,8 @@ public:
   void abort(const error& reason) override {
     CAF_LOG_TRACE(CAF_ARG(reason));
     if (out_) {
-      if (reason == sec::socket_disconnected || reason == sec::disposed)
+      if (reason == sec::connection_closed || reason == sec::socket_disconnected
+          || reason == sec::disposed)
         out_->close();
       else
         out_->abort(reason);
