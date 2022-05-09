@@ -24,7 +24,7 @@ bool lower_layer::send_response(status code, std::string_view content_type,
   begin_header(code);
   add_header_field("Content-Type"sv, content_type);
   add_header_field("Content-Length"sv, content_size);
-  return end_header();
+  return end_header() && send_payload(content);
 }
 
 bool lower_layer::send_response(status code, std::string_view content_type,
