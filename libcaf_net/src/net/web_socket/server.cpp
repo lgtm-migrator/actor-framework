@@ -24,7 +24,6 @@ std::unique_ptr<server> server::make(upper_layer_ptr up) {
 
 error server::init(socket_manager* owner, stream_oriented::lower_layer* down,
                    const settings& cfg) {
-  CAF_ASSERT(owner != nullptr);
   framing_.init(owner, down);
   owner_ = owner;
   cfg_ = cfg;

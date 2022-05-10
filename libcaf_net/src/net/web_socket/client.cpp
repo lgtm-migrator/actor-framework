@@ -40,7 +40,6 @@ std::unique_ptr<client> client::make(handshake_ptr hs, upper_layer_ptr up) {
 
 error client::init(socket_manager* owner, stream_oriented::lower_layer* down,
                    const settings& cfg) {
-  CAF_ASSERT(owner != nullptr);
   CAF_ASSERT(hs_ != nullptr);
   framing_.init(owner, down);
   if (!hs_->has_mandatory_fields())
