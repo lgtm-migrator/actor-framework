@@ -404,10 +404,10 @@ public:
     return ctx->make_observable().from_resource(*this);
   }
 
-  /// Calls `try_open` and on success immediately calls `close` on the buffer.
-  void close() {
+  /// Calls `try_open` and on success immediately calls `cancel` on the buffer.
+  void cancel() {
     if (auto buf = try_open())
-      buf->close();
+      buf->cancel();
   }
 
   explicit operator bool() const noexcept {
@@ -462,10 +462,10 @@ public:
     }
   }
 
-  /// Calls `try_open` and on success immediately calls `cancel` on the buffer.
-  void cancel() {
+  /// Calls `try_open` and on success immediately calls `close` on the buffer.
+  void close() {
     if (auto buf = try_open())
-      buf->cancel();
+      buf->close();
   }
 
   explicit operator bool() const noexcept {
