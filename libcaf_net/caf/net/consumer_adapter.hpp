@@ -54,6 +54,10 @@ public:
     return buf_->has_data();
   }
 
+  bool has_consumer_event() const noexcept {
+    return buf_->has_consumer_event();
+  }
+
   static ptr_type make(buf_ptr buf, socket_manager_ptr mgr, action do_wakeup) {
     if (buf) {
       CAF_ASSERT(mgr);

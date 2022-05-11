@@ -141,7 +141,7 @@ public:
   }
 
   bool done_sending() override {
-    return !in_ || !in_->has_data();
+    return !in_ || !in_->has_consumer_event();
   }
 
   void abort(const error& reason) override {
