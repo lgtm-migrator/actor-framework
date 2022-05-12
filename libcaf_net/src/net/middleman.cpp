@@ -22,14 +22,14 @@ namespace {
 struct prom_config {
   uint16_t port;
   std::string address = "0.0.0.0";
-  bool reuse_address = false;
+  bool reuse_address = true;
 };
 
 template <class Inspector>
 bool inspect(Inspector& f, prom_config& x) {
   return f.object(x).fields(
     f.field("port", x.port), f.field("address", x.address).fallback("0.0.0.0"),
-    f.field("reuse-address", x.reuse_address).fallback(false));
+    f.field("reuse-address", x.reuse_address).fallback(true));
 }
 
 void launch_prom_server(actor_system& sys, const prom_config& cfg) {
