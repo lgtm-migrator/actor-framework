@@ -66,15 +66,11 @@ middleman::~middleman() {
 
 void middleman::start() {
   if (!get_or(config(), "caf.middleman.manual-multiplexing", false)) {
-    mpx_thread_ = std::thread{[this] {
-      CAF_SET_LOGGER_SYS(&sys_);
-      detail::set_thread_name("caf.net.mpx");
-      sys_.thread_started();
+    mpx_thread_ = sys_.launch_thread("caf.net.mpx", [this] {
       mpx_->set_thread_id();
       launch_background_tasks(sys_);
       mpx_->run();
-      sys_.thread_terminates();
-    }};
+    });
   } else {
     mpx_->set_thread_id();
   }
