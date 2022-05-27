@@ -24,8 +24,8 @@ std::string_view server::scrape_state::scrape() {
 
 // -- implementation of http::upper_layer --------------------------------------
 
-bool server::prepare_send() {
-  return true;
+void server::prepare_send() {
+  // nop
 }
 
 bool server::done_sending() {
@@ -45,19 +45,19 @@ error server::init(socket_manager*, http::lower_layer* down, const settings&) {
 ptrdiff_t server::consume(const http::header& hdr, const_byte_span payload) {
   if (hdr.path() != "/metrics") {
     down_->send_response(http::status::not_found, "text/plain", "Not found.");
-    down_->close();
+    down_->shutdown();
   } else if (hdr.method() != http::method::get) {
     down_->send_response(http::status::method_not_allowed, "text/plain",
                          "Method not allowed.");
-    down_->close();
+    down_->shutdown();
   } else if (!hdr.query().empty() || !hdr.fragment().empty()) {
     down_->send_response(http::status::bad_request, "text/plain",
                          "No fragment or query allowed.");
-    down_->close();
+    down_->shutdown();
   } else {
     auto str = state_->scrape();
     down_->send_response(http::status::ok, "text/plain;version=0.0.4", str);
-    down_->close();
+    down_->shutdown();
   }
   return static_cast<ptrdiff_t>(payload.size());
 }

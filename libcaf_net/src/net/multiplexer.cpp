@@ -57,13 +57,8 @@ const short output_mask = POLLOUT;
 //                             | (is_writing(mask) ? output_mask : 0));
 // }
 
-operation to_operation(const socket_manager_ptr& mgr,
-                       std::optional<short> mask) {
+operation to_operation(const socket_manager_ptr&, std::optional<short> mask) {
   operation res = operation::none;
-  if (mgr->read_closed())
-    res = block_reads(res);
-  if (mgr->write_closed())
-    res = block_writes(res);
   if (mask) {
     if ((*mask & input_mask) != 0)
       res = add_read_flag(res);
@@ -187,33 +182,6 @@ void multiplexer::watch(disposable what) {
 
 // -- thread-safe signaling ----------------------------------------------------
 
-void multiplexer::dispose(socket_manager_ptr mgr) {
-  CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
-  if (std::this_thread::get_id() == tid_) {
-    do_dispose(mgr);
-  } else {
-    write_to_pipe(pollset_updater::code::dispose_manager, mgr.release());
-  }
-}
-
-void multiplexer::shutdown_reading(socket_manager_ptr mgr) {
-  CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
-  if (std::this_thread::get_id() == tid_) {
-    do_shutdown_reading(mgr);
-  } else {
-    write_to_pipe(pollset_updater::code::shutdown_reading, mgr.release());
-  }
-}
-
-void multiplexer::shutdown_writing(socket_manager_ptr mgr) {
-  CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
-  if (std::this_thread::get_id() == tid_) {
-    do_shutdown_writing(mgr);
-  } else {
-    write_to_pipe(pollset_updater::code::shutdown_writing, mgr.release());
-  }
-}
-
 void multiplexer::init(socket_manager_ptr mgr) {
   CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
   if (std::this_thread::get_id() == tid_) {
@@ -288,7 +256,6 @@ bool multiplexer::poll_once(bool blocking) {
       CAF_LOG_DEBUG("poll() on" << pollset_.size() << "sockets reported"
                                 << presult << "event(s)");
       // Scan pollset for events.
-      CAF_LOG_DEBUG("scan pollset for socket events");
       if (auto revents = pollset_[0].revents; revents != 0) {
         // Index 0 is always the pollset updater. This is the only handler that
         // is allowed to modify pollset_ and managers_. Since this may very well
@@ -297,6 +264,7 @@ bool multiplexer::poll_once(bool blocking) {
         handle(mgr, pollset_[0].events, revents);
         --presult;
       }
+      apply_updates();
       for (size_t i = 1; i < pollset_.size() && presult > 0; ++i) {
         if (auto revents = pollset_[i].revents; revents != 0) {
           handle(managers_[i], pollset_[i].events, revents);
@@ -369,6 +337,8 @@ void multiplexer::set_thread_id() {
 
 void multiplexer::run() {
   CAF_LOG_TRACE("");
+  CAF_LOG_DEBUG("run multiplexer" << CAF_ARG(input_mask) << CAF_ARG(error_mask)
+                                  << CAF_ARG(output_mask));
   // On systems like Linux, we cannot disable sigpipe on the socket alone. We
   // need to block the signal at thread level since some APIs (such as OpenSSL)
   // are unsafe to call otherwise.
@@ -393,6 +363,8 @@ void multiplexer::handle(const socket_manager_ptr& mgr,
                 << CAF_ARG(events) << CAF_ARG(revents));
   CAF_ASSERT(mgr != nullptr);
   bool checkerror = true;
+  CAF_LOG_DEBUG("handle event on socket" << mgr->handle().id << CAF_ARG(events)
+                                         << CAF_ARG(revents));
   // Note: we double-check whether the manager is actually reading because a
   // previous action from the pipe may have disabled reading.
   if ((revents & input_mask) != 0 && is_reading(mgr.get())) {
@@ -478,34 +450,9 @@ void multiplexer::do_shutdown() {
   shutting_down_ = true;
   apply_updates();
   // Skip the first manager (the pollset updater).
-  for (size_t i = 1; i < managers_.size(); ++i) {
-    auto& mgr = managers_[i];
-    mgr->close_read();
-    update_for(static_cast<ptrdiff_t>(i)).events &= ~input_mask;
-  }
+  for (size_t i = 1; i < managers_.size(); ++i)
+    managers_[i]->dispose();
   apply_updates();
-}
-
-void multiplexer::do_dispose(const socket_manager_ptr& mgr) {
-  CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
-  mgr->handle_error(sec::disposed);
-  update_for(mgr.get()).events = 0;
-}
-
-void multiplexer::do_shutdown_reading(const socket_manager_ptr& mgr) {
-  CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
-  if (!shutting_down_ && !mgr->read_closed()) {
-    mgr->close_read();
-    update_for(mgr.get()).events &= ~input_mask;
-  }
-}
-
-void multiplexer::do_shutdown_writing(const socket_manager_ptr& mgr) {
-  CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
-  if (!shutting_down_ && !mgr->write_closed()) {
-    mgr->close_write();
-    update_for(mgr.get()).events &= ~output_mask;
-  }
 }
 
 void multiplexer::do_init(const socket_manager_ptr& mgr) {

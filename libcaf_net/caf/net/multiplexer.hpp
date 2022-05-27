@@ -107,18 +107,6 @@ public:
 
   // -- thread-safe signaling --------------------------------------------------
 
-  /// Schedules a call to `mgr->handle_error(sec::disposed)`.
-  /// @thread-safe
-  void dispose(socket_manager_ptr mgr);
-
-  /// Stops further reading by `mgr`.
-  /// @thread-safe
-  void shutdown_reading(socket_manager_ptr mgr);
-
-  /// Stops further writing by `mgr`.
-  /// @thread-safe
-  void shutdown_writing(socket_manager_ptr mgr);
-
   /// Registers `mgr` for initialization in the multiplexer's thread.
   /// @thread-safe
   void init(socket_manager_ptr mgr);
@@ -238,12 +226,6 @@ private:
   void do_shutdown();
 
   void do_register_reading(const socket_manager_ptr& mgr);
-
-  void do_dispose(const socket_manager_ptr& mgr);
-
-  void do_shutdown_reading(const socket_manager_ptr& mgr);
-
-  void do_shutdown_writing(const socket_manager_ptr& mgr);
 
   void do_init(const socket_manager_ptr& mgr);
 };

@@ -19,11 +19,11 @@ socket_manager::socket_manager(multiplexer* mpx, socket fd,
   CAF_ASSERT(fd_ != invalid_socket);
   CAF_ASSERT(mpx_ != nullptr);
   CAF_ASSERT(handler_ != nullptr);
-  memset(&flags_, 0, sizeof(flags_t));
 }
 
 socket_manager::~socket_manager() {
-  close(fd_);
+  if (fd_)
+    close(fd_);
 }
 
 // -- factories ----------------------------------------------------------------
@@ -53,13 +53,11 @@ bool socket_manager::is_writing() const noexcept {
 // -- event loop management ----------------------------------------------------
 
 void socket_manager::register_reading() {
-  if (!flags_.read_closed)
-    mpx_->register_reading(this);
+  mpx_->register_reading(this);
 }
 
 void socket_manager::register_writing() {
-  if (!flags_.write_closed)
-    mpx_->register_writing(this);
+  mpx_->register_writing(this);
 }
 
 void socket_manager::deregister_reading() {
@@ -72,23 +70,6 @@ void socket_manager::deregister_writing() {
 
 void socket_manager::deregister() {
   mpx_->deregister(this);
-}
-
-void socket_manager::shutdown_read() {
-  deregister_reading();
-  flags_.read_closed = true;
-}
-
-void socket_manager::shutdown_write() {
-  deregister_writing();
-  flags_.write_closed = true;
-}
-
-void socket_manager::shutdown() {
-  flags_.read_closed = true;
-  flags_.write_closed = true;
-  disposed_ = true;
-  deregister();
 }
 
 // -- callbacks for the handler ------------------------------------------------
@@ -112,21 +93,20 @@ void socket_manager::schedule(action what) {
   });
 }
 
+void socket_manager::shutdown() {
+  if (!shutting_down_) {
+    shutting_down_ = true;
+    dispose();
+  } else {
+    // This usually only happens after disposing the manager if the handler
+    // still had data to send.
+    mpx_->schedule_fn([ptr = strong_this()] { //
+      ptr->cleanup();
+    });
+  }
+}
+
 // -- callbacks for the multiplexer --------------------------------------------
-
-void socket_manager::close_read() noexcept {
-  // TODO: extend transport API for closing read operations.
-  flags_.read_closed = true;
-  if (flags_.write_closed)
-    disposed_ = true;
-}
-
-void socket_manager::close_write() noexcept {
-  // TODO: extend transport API for closing write operations.
-  flags_.write_closed = true;
-  if (flags_.read_closed)
-    disposed_ = true;
-}
 
 error socket_manager::init(const settings& cfg) {
   CAF_LOG_TRACE(CAF_ARG(cfg));
@@ -138,26 +118,46 @@ error socket_manager::init(const settings& cfg) {
 }
 
 void socket_manager::handle_read_event() {
-  handler_->handle_read_event();
+  if (handler_)
+    handler_->handle_read_event();
+  else
+    deregister();
 }
 
 void socket_manager::handle_write_event() {
-  handler_->handle_write_event();
+  if (handler_)
+    handler_->handle_write_event();
+  else
+    deregister();
 }
 
 void socket_manager::handle_error(sec code) {
-  if (handler_) {
-    handler_->abort(make_error(code));
-    handler_ = nullptr;
+  if (!disposed_)
     disposed_ = true;
+  if (handler_) {
+    if (!shutting_down_) {
+      handler_->abort(make_error(code));
+      shutting_down_ = true;
+    }
+    if (code == sec::disposed && !handler_->finalized()) {
+      // When disposing the manger, the transport is still allowed to send any
+      // pending data and it will call shutdown() later to trigger cleanup().
+      deregister_reading();
+    } else {
+      cleanup();
+    }
   }
 }
 
 // -- implementation of disposable_impl ----------------------------------------
 
 void socket_manager::dispose() {
-  if (!disposed())
-    mpx_->dispose(this);
+  bool expected = false;
+  if (disposed_.compare_exchange_strong(expected, true)) {
+    mpx_->schedule_fn([ptr = strong_this()] { //
+      ptr->handle_error(sec::disposed);
+    });
+  }
 }
 
 bool socket_manager::disposed() const noexcept {
@@ -173,6 +173,15 @@ void socket_manager::deref_disposable() const noexcept {
 }
 
 // -- utility functions --------------------------------------------------------
+
+void socket_manager::cleanup() {
+  deregister();
+  handler_.reset();
+  if (fd_) {
+    close(fd_);
+    fd_ = invalid_socket;
+  }
+}
 
 socket_manager_ptr socket_manager::strong_this() {
   return socket_manager_ptr{this};

@@ -59,18 +59,17 @@ public:
     return none;
   }
 
-  bool prepare_send() override {
-    while (self->consume_message())
+  void prepare_send() override {
+    while (!self->terminated() && self->consume_message())
       ; // repeat
-    return !self->terminated();
   }
 
   bool done_sending() override {
     return self->try_block_mailbox();
   }
 
-  void abort(const error& reason) override {
-    CAF_FAIL("app::abort called: " << reason);
+  void abort(const error&) override {
+    // nop
   }
 
   ptrdiff_t consume(byte_span buf, byte_span) override {

@@ -24,12 +24,12 @@ public:
 
   /// Shuts down any connection or session gracefully. Any pending data gets
   /// flushed before closing the socket.
-  virtual void close() = 0;
+  virtual void shutdown() = 0;
 
   /// Shuts down any connection or session du to an error. Any pending data gets
   /// flushed before closing the socket. Protocols with a dedicated closing
   /// handshake such as WebSocket may send the close reason to the peer.
-  virtual void close(const error& reason);
+  virtual void shutdown(const error& reason);
 };
 
 } // namespace caf::net

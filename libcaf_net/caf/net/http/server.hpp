@@ -81,7 +81,7 @@ public:
 
   bool is_reading() const noexcept override;
 
-  void close() override;
+  void shutdown() override;
 
   void request_messages() override;
 
@@ -106,7 +106,7 @@ public:
 
   void abort(const error& reason) override;
 
-  bool prepare_send() override;
+  void prepare_send() override;
 
   bool done_sending() override;
 

@@ -110,26 +110,23 @@ public:
     }
   };
 
-  bool prepare_send() override {
+  void prepare_send() override {
     write_helper helper{this};
     while (down_->can_send_more() && in_) {
       auto [again, consumed] = in_->pull(async::delay_errors, 1, helper);
       if (!again) {
         if (helper.err) {
-          down_->close(helper.err);
+          down_->shutdown(helper.err);
         } else {
-          down_->close();
+          down_->shutdown();
         }
         in_ = nullptr;
       } else if (helper.aborted) {
         in_->cancel();
         in_ = nullptr;
-        return false;
-      } else if (consumed == 0) {
-        return true;
+        down_->shutdown(trait_.last_error());
       }
     }
-    return true;
   }
 
   bool done_sending() override {

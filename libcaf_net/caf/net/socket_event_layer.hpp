@@ -28,8 +28,12 @@ public:
   /// Called after returning `handover` from a read or write handler.
   virtual bool do_handover(std::unique_ptr<socket_event_layer>& next);
 
-  /// Called on hard errors on the managed socket.
+  /// Called on socket errors or when the manager gets disposed.
   virtual void abort(const error& reason) = 0;
+
+  /// Queries whether the object can be safely discarded after calling
+  /// @ref abort on it, e.g., that pending data has been written.
+  virtual bool finalized() const noexcept;
 };
 
 } // namespace caf::net

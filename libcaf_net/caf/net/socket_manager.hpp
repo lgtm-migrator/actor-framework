@@ -33,12 +33,6 @@ public:
 
   using event_handler_ptr = std::unique_ptr<socket_event_layer>;
 
-  /// Stores manager-related flags in a single block.
-  struct flags_t {
-    bool read_closed : 1;
-    bool write_closed : 1;
-  };
-
   // -- constructors, destructors, and assignment operators --------------------
 
   /// @pre `handle != invalid_socket`
@@ -111,16 +105,6 @@ public:
     return mpx_;
   }
 
-  /// Returns whether the manager closed read operations on the socket.
-  [[nodiscard]] bool read_closed() const noexcept {
-    return flags_.read_closed;
-  }
-
-  /// Returns whether the manager closed write operations on the socket.
-  [[nodiscard]] bool write_closed() const noexcept {
-    return flags_.write_closed;
-  }
-
   /// Queries whether the manager is registered for reading.
   bool is_reading() const noexcept;
 
@@ -144,18 +128,6 @@ public:
   /// Deregisters the manager from both read and write operations.
   void deregister();
 
-  /// Deregisters the manager from read operations and blocks any future
-  /// attempts to re-register it.
-  void shutdown_read();
-
-  /// Deregisters the manager from write operations and blocks any future
-  /// attempts to re-register it.
-  void shutdown_write();
-
-  /// Deregisters the manager from both read and write operations and blocks any
-  /// future attempts to re-register it.
-  void shutdown();
-
   // -- callbacks for the handler ----------------------------------------------
 
   /// Schedules a call to `do_handover` on the handler.
@@ -170,13 +142,10 @@ public:
     schedule(make_action(std::forward<F>(what)));
   }
 
+  /// Shuts down this socket manager.
+  void shutdown();
+
   // -- callbacks for the multiplexer ------------------------------------------
-
-  /// Closes the read channel of the socket.
-  void close_read() noexcept;
-
-  /// Closes the write channel of the socket.
-  void close_write() noexcept;
 
   /// Initializes the manager and its all of its sub-components.
   error init(const settings& cfg);
@@ -187,8 +156,10 @@ public:
   /// Called whenever the socket is allowed to send data.
   void handle_write_event();
 
-  /// Called when the remote side becomes unreachable due to an error.
-  /// @param code The error code as reported by the operating system.
+  /// Called when the remote side becomes unreachable due to an error or after
+  /// calling @ref dispose.
+  /// @param code The error code as reported by the operating system or
+  ///             @ref sec::disposed.
   void handle_error(sec code);
 
   // -- implementation of disposable_impl --------------------------------------
@@ -203,6 +174,8 @@ public:
 
 private:
   // -- utility functions ------------------------------------------------------
+
+  void cleanup();
 
   socket_manager_ptr strong_this();
 
@@ -219,12 +192,14 @@ private:
   /// down (and the multiplexer is part of the actor system).
   multiplexer* mpx_;
 
-  /// Stores flags for the socket file descriptor.
-  flags_t flags_;
-
   /// Stores the event handler that operators on the socket file descriptor.
   event_handler_ptr handler_;
 
+  /// Stores whether `shutdown` has been called.
+  bool shutting_down_ = false;
+
+  /// Stores whether the manager has been either explicitly disposed or shut
+  /// down by demand of the application.
   std::atomic<bool> disposed_;
 };
 

@@ -60,8 +60,7 @@ int caf_main(caf::actor_system& sys, const config& cfg) {
     sys.spawn([conn, hello](caf::event_based_actor* self) {
       auto [pull, push] = conn.data();
       // Print everything from the server to stdout.
-      self->make_observable()
-        .from_resource(pull)
+      pull.observe_on(self)
         .do_on_error([](const caf::error& what) {
           std::cerr << "*** error while reading from the WebSocket: "
                     << to_string(what) << '\n';

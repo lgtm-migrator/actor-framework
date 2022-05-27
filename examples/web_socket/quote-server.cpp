@@ -128,7 +128,8 @@ int caf_main(caf::actor_system& sys, const config& cfg) {
         auto quote = quotes.empty() ? "Try /epictetus, /seneca or /plato."
                                     : f(quotes);
         self->make_observable().just(ws::frame{quote}).subscribe(push);
-        // Note: we simply drop `pull` here, which will close the buffer.
+        // We ignore whatever the client may send to us.
+        pull.observe_on(self).subscribe(std::ignore);
       });
   });
   // Callback for incoming WebSocket requests.

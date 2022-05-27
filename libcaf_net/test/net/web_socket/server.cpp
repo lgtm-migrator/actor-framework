@@ -39,8 +39,8 @@ public:
     return none;
   }
 
-  bool prepare_send() override {
-    return true;
+  void prepare_send() override {
+    // nop
   }
 
   bool done_sending() override {

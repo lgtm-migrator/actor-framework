@@ -77,7 +77,7 @@ public:
 
   // -- web_socket::lower_layer implementation ---------------------------------
 
-  using web_socket::lower_layer::close;
+  using web_socket::lower_layer::shutdown;
 
   bool can_send_more() const noexcept override;
 
@@ -85,7 +85,7 @@ public:
 
   bool is_reading() const noexcept override;
 
-  void close(status code, std::string_view desc) override;
+  void shutdown(status code, std::string_view desc) override;
 
   void request_messages() override;
 

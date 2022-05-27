@@ -40,17 +40,17 @@ int caf_main(caf::actor_system& sys, const config& cfg) {
     return EXIT_FAILURE;
   }
   // Create buffers to signal events from the WebSocket server to the worker.
-  auto [worker_res, server_res] = net::http::make_request_resource();
+  auto [worker_pull, server_push] = net::http::make_request_resource();
   // Spin up the HTTP server.
-  net::http::serve(sys, fd, std::move(server_res));
+  net::http::serve(sys, fd, std::move(server_push));
   // Spin up a worker to handle the HTTP requests.
-  auto worker = sys.spawn([wres = worker_res](event_based_actor* self) {
+  auto worker = sys.spawn([wres = worker_pull](event_based_actor* self) {
     // For each incoming request ...
     wres
       .observe_on(self) //
       .for_each([](const net::http::request& req) {
         // ... we simply return the current time as string.
-        // Note: we may not respond more than once to a single request.
+        // Note: we cannot respond more than once to a request.
         auto str = caf::deep_to_string(make_timestamp());
         req.respond(net::http::status::ok, "text/plain", str);
       });

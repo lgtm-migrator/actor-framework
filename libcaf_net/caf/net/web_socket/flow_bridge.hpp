@@ -40,6 +40,13 @@ public:
     // nop
   }
 
+  ~flow_bridge() {
+    if (in_)
+      in_->cancel();
+    if (out_)
+      out_->close();
+  }
+
   static std::unique_ptr<flow_bridge> make(connector_pointer conn) {
     return std::make_unique<flow_bridge>(std::move(conn));
   }
@@ -94,13 +101,13 @@ public:
       auto do_wakeup = make_action([this] {
         prepare_send();
         if (!running())
-          down_->close();
+          down_->shutdown();
       });
       auto do_resume = make_action([this] { down_->request_messages(); });
       auto do_cancel = make_action([this] {
         out_ = nullptr;
         if (!running())
-          down_->close();
+          down_->shutdown();
       });
       in_ = consumer_type::make(pull.try_open(), mgr, std::move(do_wakeup));
       out_ = producer_type::make(push.try_open(), mgr, std::move(do_resume),
@@ -117,27 +124,25 @@ public:
     }
   }
 
-  bool prepare_send() override {
+  void prepare_send() override {
     write_helper helper{this};
     while (down_->can_send_more() && in_) {
       auto [again, consumed] = in_->pull(async::delay_errors, 1, helper);
       if (!again) {
         if (helper.err) {
-          down_->close(helper.err);
+          down_->shutdown(helper.err);
         } else {
-          down_->close();
+          down_->shutdown();
         }
         in_ = nullptr;
-        return true;
       } else if (helper.aborted) {
         in_->cancel();
         in_ = nullptr;
-        return true;
+        down_->shutdown(trait_.last_error());
       } else if (consumed == 0) {
-        return true;
+        return;
       }
     }
-    return true;
   }
 
   bool done_sending() override {

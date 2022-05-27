@@ -86,7 +86,7 @@ public:
     /// Stores whether we left a write handler due to want_read.
     bool wanted_write_from_read_event : 1;
 
-    /// Stores whether we shutdown write on the socket after flushing.
+    /// Stores whether the application has asked to shut down.
     bool shutting_down : 1;
   };
 
@@ -123,7 +123,7 @@ public:
 
   bool is_reading() const noexcept override;
 
-  void close() override;
+  void shutdown() override;
 
   // -- properties -------------------------------------------------------------
 
@@ -160,6 +160,8 @@ public:
   void handle_write_event() override;
 
   void abort(const error& reason) override;
+
+  bool finalized() const noexcept override;
 
 protected:
   // -- utility functions ------------------------------------------------------

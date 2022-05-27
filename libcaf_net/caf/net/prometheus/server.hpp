@@ -55,7 +55,7 @@ public:
 
   // -- implementation of http::upper_layer ------------------------------------
 
-  bool prepare_send() override;
+  void prepare_send() override;
 
   bool done_sending() override;
 

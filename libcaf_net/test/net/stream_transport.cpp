@@ -93,12 +93,11 @@ public:
     return static_cast<ptrdiff_t>(recv_buf_->size());
   }
 
-  bool prepare_send() override {
+  void prepare_send() override {
     MESSAGE("prepare_send called");
     auto& buf = down->output_buffer();
     auto data = as_bytes(make_span(hello_manager));
     buf.insert(buf.end(), data.begin(), data.end());
-    return true;
   }
 
   bool done_sending() override {

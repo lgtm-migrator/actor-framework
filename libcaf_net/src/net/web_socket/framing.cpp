@@ -30,7 +30,7 @@ bool framing::is_reading() const noexcept {
   return down_->is_reading();
 }
 
-void framing::close(status code, std::string_view msg) {
+void framing::shutdown(status code, std::string_view msg) {
   auto code_val = static_cast<uint16_t>(code);
   uint32_t mask_key = 0;
   byte_buffer payload;
@@ -47,6 +47,7 @@ void framing::close(status code, std::string_view msg) {
   detail::rfc6455::assemble_frame(detail::rfc6455::connection_close, mask_key,
                                   payload, down_->output_buffer());
   down_->end_output();
+  down_->shutdown();
 }
 
 void framing::request_messages() {

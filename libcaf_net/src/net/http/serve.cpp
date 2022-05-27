@@ -35,8 +35,8 @@ bool http_request_producer::push(const net::http::request& item) {
 
 // -- http_flow_adapter --------------------------------------------------------
 
-bool http_flow_adapter::prepare_send() {
-  return true;
+void http_flow_adapter::prepare_send() {
+  // nop
 }
 
 bool http_flow_adapter::done_sending() {
@@ -59,6 +59,11 @@ error http_flow_adapter::init(net::socket_manager* owner,
 ptrdiff_t http_flow_adapter::consume(const net::http::header& hdr,
                                      const_byte_span payload) {
   using namespace net::http;
+  if (!pending_.empty()) {
+    CAF_LOG_WARNING("received multiple requests from the same HTTP client: "
+                    "not implemented yet (drop request)");
+    return static_cast<ptrdiff_t>(payload.size());
+  }
   auto prom = async::promise<response>();
   auto fut = prom.get_future();
   auto buf = std::vector<std::byte>{payload.begin(), payload.end()};
@@ -71,14 +76,13 @@ ptrdiff_t http_flow_adapter::consume(const net::http::header& hdr,
         down_->add_header_field(key, val);
       std::ignore = down_->end_header();
       down_->send_payload(res.body());
-      // TODO: we should close the connection unless indicated otherwise
-      //       (keepalive flag?). Also, we should clean up pending_.
+      down_->shutdown();
     },
     [this](const error& err) {
       auto description = to_string(err);
       down_->send_response(status::internal_server_error, "text/plain",
                            description);
-      // TODO: see above.
+      down_->shutdown();
     });
   pending_.emplace_back(std::move(hdl));
   return static_cast<ptrdiff_t>(payload.size());

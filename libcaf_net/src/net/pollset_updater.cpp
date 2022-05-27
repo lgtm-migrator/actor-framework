@@ -60,15 +60,6 @@ void pollset_updater::handle_read_event() {
           case code::init_manager:
             mpx_->do_init(as_mgr(ptr));
             break;
-          case code::dispose_manager:
-            mpx_->do_dispose(as_mgr(ptr));
-            break;
-          case code::shutdown_reading:
-            mpx_->do_shutdown_reading(as_mgr(ptr));
-            break;
-          case code::shutdown_writing:
-            mpx_->do_shutdown_writing(as_mgr(ptr));
-            break;
           case code::run_action:
             run_action(ptr);
             break;
@@ -83,13 +74,13 @@ void pollset_updater::handle_read_event() {
       }
     } else if (num_bytes == 0) {
       CAF_LOG_DEBUG("pipe closed, assume shutdown");
-      owner_->shutdown();
+      owner_->deregister();
       return;
     } else if (last_socket_error_is_temporary()) {
       return;
     } else {
-      CAF_LOG_DEBUG("pollset updater failed to read from the pipe");
-      owner_->shutdown();
+      CAF_LOG_ERROR("pollset updater failed to read from the pipe");
+      owner_->deregister();
       return;
     }
   }

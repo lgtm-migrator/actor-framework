@@ -75,8 +75,9 @@ ptrdiff_t server::consume(byte_span input, byte_span delta) {
   }
 }
 
-bool server::prepare_send() {
-  return handshake_complete_ ? upper_layer().prepare_send() : true;
+void server::prepare_send() {
+  if (handshake_complete_)
+    upper_layer().prepare_send();
 }
 
 bool server::done_sending() {

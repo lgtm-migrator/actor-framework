@@ -13,13 +13,13 @@ lower_layer::~lower_layer() {
   // nop
 }
 
-void lower_layer::close() {
+void lower_layer::shutdown() {
   using namespace std::literals;
-  close(status::normal_close, "EOF"sv);
+  shutdown(status::normal_close, "EOF"sv);
 }
 
-void lower_layer::close(const error& reason) {
-  close(status::unexpected_condition, to_string(reason));
+void lower_layer::shutdown(const error& reason) {
+  shutdown(status::unexpected_condition, to_string(reason));
 }
 
 } // namespace caf::net::web_socket

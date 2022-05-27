@@ -93,10 +93,12 @@ public:
   }
 
   void abort(const error& reason) override {
-    FAIL("abort called: " << reason);
+    abort_reason = reason;
   }
 
   std::string name;
+
+  error abort_reason;
 
 private:
   std::byte* read_position_begin() {
@@ -232,8 +234,8 @@ SCENARIO("a multiplexer terminates its thread after shutting down") {
       mpx->shutdown();
       THEN("the thread terminates and all socket managers get shut down") {
         mpx_thread.join();
-        CHECK(alice_mgr->read_closed());
-        CHECK(bob_mgr->read_closed());
+        CHECK(alice_mgr->disposed());
+        CHECK(bob_mgr->disposed());
       }
     }
   }

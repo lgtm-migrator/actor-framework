@@ -115,23 +115,22 @@ public:
     }
   };
 
-  bool prepare_send() override {
-    if (done || !adapter)
-      return true;
-    auto helper = send_helper{this};
-    while (down->can_send_more()) {
-      auto [again, consumed] = adapter->pull(async::delay_errors, 1, helper);
-      if (!again) {
-        MESSAGE("adapter signaled end-of-buffer");
-        adapter = nullptr;
-        done = true;
-        break;
-      } else if (consumed == 0) {
-        break;
+  void prepare_send() override {
+    if (!done && adapter) {
+      auto helper = send_helper{this};
+      while (down->can_send_more()) {
+        auto [again, consumed] = adapter->pull(async::delay_errors, 1, helper);
+        if (!again) {
+          MESSAGE("adapter signaled end-of-buffer");
+          adapter = nullptr;
+          done = true;
+          break;
+        } else if (consumed == 0) {
+          break;
+        }
       }
+      MESSAGE(written_bytes.size() << " bytes written");
     }
-    MESSAGE(written_bytes.size() << " bytes written");
-    return true;
   }
 
   bool done_sending() override {

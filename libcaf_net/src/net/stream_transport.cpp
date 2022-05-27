@@ -111,12 +111,14 @@ bool stream_transport::is_reading() const noexcept {
   return max_read_size_ > 0;
 }
 
-void stream_transport::close() {
-  parent_->shutdown_read();
-  if (write_buf_.empty())
-    parent_->shutdown_write();
-  else
+void stream_transport::shutdown() {
+  if (write_buf_.empty()) {
+    parent_->shutdown();
+  } else {
+    configure_read(receive_policy::stop());
+    parent_->deregister_reading();
     flags_.shutting_down = true;
+  }
 }
 
 // -- implementation of transport ----------------------------------------------
@@ -283,29 +285,25 @@ void stream_transport::handle_write_event() {
       return;
     }
   }
-  // Allow the upper layer to add extra data to the write buffer.
-  if (!up_->prepare_send()) {
-    CAF_LOG_DEBUG("prepare_send failed");
-    parent_->deregister();
-    return;
-  }
-  if (write_buf_.empty()) {
-    if (up_->done_sending()) {
-      if (!flags_.shutting_down)
-        parent_->deregister_writing();
-      else
-        parent_->shutdown_write();
+  // When shutting down, we flush our buffer and then shut down the manager.
+  if (flags_.shutting_down) {
+    if (write_buf_.empty()) {
+      parent_->shutdown();
+      return;
     }
-    return;
+  } else if (can_send_more()) {
+    // Allow the upper layer to add extra data to the write buffer.
+    up_->prepare_send();
   }
   auto write_res = policy_->write(fd_, write_buf_);
   if (write_res > 0) {
     write_buf_.erase(write_buf_.begin(), write_buf_.begin() + write_res);
     if (write_buf_.empty() && up_->done_sending()) {
-      if (!flags_.shutting_down)
+      if (!flags_.shutting_down) {
         parent_->deregister_writing();
-      else
-        parent_->shutdown_write();
+      } else {
+        parent_->shutdown();
+      }
     }
     return;
   } else if (write_res < 0) {
@@ -331,6 +329,11 @@ void stream_transport::handle_write_event() {
 
 void stream_transport::abort(const error& reason) {
   up_->abort(reason);
+  flags_.shutting_down = true;
+}
+
+bool stream_transport::finalized() const noexcept {
+  return write_buf_.empty();
 }
 
 // -- free functions -----------------------------------------------------------

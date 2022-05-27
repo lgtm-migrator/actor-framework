@@ -34,7 +34,7 @@ public:
 
   bool is_reading() const noexcept override;
 
-  void close() override;
+  void shutdown() override;
 
   void configure_read(caf::net::receive_policy policy) override;
 

@@ -75,6 +75,7 @@ expected<tcp_accept_socket> new_tcp_acceptor_impl(uint16_t port,
   CAF_NET_SYSCALL("bind", res, !=, 0,
                   bind(fd, reinterpret_cast<sockaddr*>(&sa),
                        static_cast<socket_size_type>(sizeof(sa))));
+  CAF_LOG_DEBUG("bound socket" << fd << "to listen on port" << port);
   return sguard.release();
 }
 
@@ -130,6 +131,7 @@ make_tcp_accept_socket(uint16_t port, std::string addr, bool reuse_addr) {
 }
 
 expected<tcp_stream_socket> accept(tcp_accept_socket x) {
+  CAF_LOG_TRACE(CAF_ARG(x));
   auto sock = ::accept(x.id, nullptr, nullptr);
   if (sock == net::invalid_socket_id) {
     auto err = net::last_socket_error();
@@ -139,6 +141,7 @@ expected<tcp_stream_socket> accept(tcp_accept_socket x) {
     }
     return caf::make_error(sec::socket_operation_failed, "tcp accept failed");
   }
+  CAF_LOG_DEBUG("accepted TCP socket" << sock << "on accept socket" << x.id);
   return tcp_stream_socket{sock};
 }
 

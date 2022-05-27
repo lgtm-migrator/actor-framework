@@ -45,12 +45,12 @@ public:
   /// Seals the current text message buffer and ships a new WebSocket frame.
   virtual bool end_text_message() = 0;
 
-  void close() override;
+  void shutdown() override;
 
-  void close(const error& reason) override;
+  void shutdown(const error& reason) override;
 
-  /// Sends a close message with custom @ref status @p code and @p msg text.
-  virtual void close(status code, std::string_view msg) = 0;
+  /// Sends a shutdown message with custom @ref status @p code and @p msg text.
+  virtual void shutdown(status code, std::string_view msg) = 0;
 };
 
 } // namespace caf::net::web_socket

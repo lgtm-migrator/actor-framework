@@ -18,8 +18,8 @@ bool server::is_reading() const noexcept {
   return down_->is_reading();
 }
 
-void server::close() {
-  down_->close();
+void server::shutdown() {
+  down_->shutdown();
 }
 
 void server::request_messages() {
@@ -90,8 +90,8 @@ void server::abort(const error& reason) {
   up_->abort(reason);
 }
 
-bool server::prepare_send() {
-  return up_->prepare_send();
+void server::prepare_send() {
+  up_->prepare_send();
 }
 
 bool server::done_sending() {

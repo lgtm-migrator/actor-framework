@@ -79,8 +79,8 @@ ptrdiff_t length_prefix_framing::consume(byte_span input, byte_span) {
   }
 }
 
-bool length_prefix_framing::prepare_send() {
-  return up_->prepare_send();
+void length_prefix_framing::prepare_send() {
+  up_->prepare_send();
 }
 
 bool length_prefix_framing::done_sending() {
@@ -135,8 +135,8 @@ bool length_prefix_framing::end_message() {
   }
 }
 
-void length_prefix_framing::close() {
-  down_->close();
+void length_prefix_framing::shutdown() {
+  down_->shutdown();
 }
 
 // -- utility functions ------------------------------------------------------

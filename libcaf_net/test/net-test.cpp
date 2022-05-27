@@ -23,7 +23,7 @@ bool mock_stream_transport::is_reading() const noexcept {
   return max_read_size > 0;
 }
 
-void mock_stream_transport::close() {
+void mock_stream_transport::shutdown() {
   // nop
 }
 

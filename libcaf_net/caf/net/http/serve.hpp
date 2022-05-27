@@ -57,7 +57,7 @@ public:
     // nop
   }
 
-  bool prepare_send() override;
+  void prepare_send() override;
 
   bool done_sending() override;
 
@@ -144,7 +144,6 @@ disposable serve(actor_system& sys, Socket fd,
   } else {
     return disposable{};
   }
-  // TODO: serve() should return a disposable to stop the HTTP server.
 }
 
 } // namespace caf::net::http

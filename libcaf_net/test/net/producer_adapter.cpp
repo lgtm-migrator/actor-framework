@@ -79,7 +79,7 @@ public:
       // Note: the execution unit is the owner of this object. As as long as the
       // execution unit lives, accessing `this` is safe.
       auto do_resume = make_action([this] { down->request_messages(); });
-      auto do_cancel = make_action([this] { down->close(); });
+      auto do_cancel = make_action([this] { down->shutdown(); });
       adapter_ = adapter_type::make(std::move(buf), mgr, std::move(do_resume),
                                     std::move(do_cancel));
       return none;
@@ -88,8 +88,8 @@ public:
     }
   }
 
-  bool prepare_send() override {
-    return true;
+  void prepare_send() override {
+    // nop
   }
 
   bool done_sending() override {
