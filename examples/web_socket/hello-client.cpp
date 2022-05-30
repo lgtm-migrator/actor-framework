@@ -21,7 +21,8 @@ struct config : caf::actor_system_config {
       .add<std::string>("host", "TCP endpoint to connect to")
       .add<uint16_t>("port,p", "port for connecting to the host")
       .add<std::string>("endpoint", "sets the Request-URI field")
-      .add<std::string>("protocols", "sets the Sec-WebSocket-Protocol field");
+      .add<std::string>("protocols", "sets the Sec-WebSocket-Protocol field")
+      .add<size_t>("max,m", "maximum number of message to receive");
   }
 };
 
@@ -65,6 +66,13 @@ int caf_main(caf::actor_system& sys, const config& cfg) {
           std::cerr << "*** error while reading from the WebSocket: "
                     << to_string(what) << '\n';
         })
+        .compose([self](auto in) {
+          if (auto limit = caf::get_as<size_t>(self->config(), "max")) {
+            return std::move(in).take(*limit).as_observable();
+          } else {
+            return std::move(in).as_observable();
+          }
+        })
         .for_each([](const ws::frame& msg) {
           if (msg.is_text()) {
             std::cout << "Server: " << msg.as_text() << '\n';
@@ -73,8 +81,11 @@ int caf_main(caf::actor_system& sys, const config& cfg) {
                       << msg.as_binary().size() << "]\n";
           }
         });
-      // Send our hello message.
-      self->make_observable().just(ws::frame{hello}).subscribe(push);
+      // Send our hello message and wait until the server closes the socket.
+      self->make_observable()
+        .just(ws::frame{hello})
+        .concat(self->make_observable().never<ws::frame>())
+        .subscribe(push);
     });
   });
   return EXIT_SUCCESS;
