@@ -59,7 +59,7 @@ public:
     *done_ = true;
   }
 
-  error init(socket_manager*, net::stream_oriented::lower_layer* down,
+  error init(net::stream_oriented::lower_layer* down,
              const settings&) override {
     MESSAGE("initialize dummy app");
     down_ = down;

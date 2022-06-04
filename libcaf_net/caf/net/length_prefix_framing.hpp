@@ -6,7 +6,8 @@
 
 #include "caf/byte_span.hpp"
 #include "caf/detail/net_export.hpp"
-#include "caf/net/message_oriented.hpp"
+#include "caf/net/binary/lower_layer.hpp"
+#include "caf/net/binary/upper_layer.hpp"
 #include "caf/net/stream_oriented.hpp"
 
 #include <cstdint>
@@ -23,11 +24,11 @@ namespace caf::net {
 /// on 32-bit platforms.
 class CAF_NET_EXPORT length_prefix_framing
   : public stream_oriented::upper_layer,
-    public message_oriented::lower_layer {
+    public binary::lower_layer {
 public:
   // -- member types -----------------------------------------------------------
 
-  using upper_layer_ptr = std::unique_ptr<message_oriented::upper_layer>;
+  using upper_layer_ptr = std::unique_ptr<binary::upper_layer>;
 
   // -- constants --------------------------------------------------------------
 
@@ -45,36 +46,13 @@ public:
 
   // -- high-level factory functions -------------------------------------------
 
-  //   /// Runs a WebSocket server on the connected socket `fd`.
-  //   /// @param mpx The multiplexer that takes ownership of the socket.
-  //   /// @param fd A connected stream socket.
-  //   /// @param cfg Additional configuration parameters for the protocol
-  //   stack.
-  //   /// @param in Inputs for writing to the socket.
-  //   /// @param out Outputs from the socket.
-  //   /// @param trait Converts between the native and the wire format.
-  //   /// @relates length_prefix_framing
-  //   template <template <class> class Transport = stream_transport, class
-  //   Socket,
-  //             class T, class Trait, class... TransportArgs>
-  //   error run(actor_system&sys,Socket fd,
-  //                                        const settings& cfg,
-  //                                        async::consumer_resource<T> in,
-  //                                        async::producer_resource<T> out,
-  //                                        Trait trait, TransportArgs&&...
-  //                                        args) {
-  //     using app_t
-  //       = Transport<length_prefix_framing<message_flow_bridge<T, Trait>>>;
-  //     auto mgr = make_socket_manager<app_t>(fd, &mpx,
-  //                                           std::forward<TransportArgs>(args)...,
-  //                                           std::move(in), std::move(out),
-  //                                           std::move(trait));
-  //     return mgr->init(cfg);
-  // }
+  // disposable accept(actor_system& sys, Socket fd,
+  //                   acceptor_resource_t<Ts...> out, OnRequest on_request,
+  //                   size_t limit = 0);
 
   // -- implementation of stream_oriented::upper_layer -------------------------
 
-  error init(socket_manager* owner, stream_oriented::lower_layer* down,
+  error init(stream_oriented::lower_layer* down,
              const settings& config) override;
 
   void abort(const error& reason) override;
@@ -85,7 +63,7 @@ public:
 
   bool done_sending() override;
 
-  // -- implementation of message_oriented::lower_layer ------------------------
+  // -- implementation of binary::lower_layer ----------------------------------
 
   bool can_send_more() const noexcept override;
 
@@ -94,6 +72,8 @@ public:
   void suspend_reading() override;
 
   bool is_reading() const noexcept override;
+
+  void write_later() override;
 
   void begin_message() override;
 

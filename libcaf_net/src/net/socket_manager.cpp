@@ -76,7 +76,7 @@ void socket_manager::deregister() {
 
 void socket_manager::schedule_handover() {
   deregister();
-  mpx_->schedule_fn([ptr = strong_this()] { //
+  mpx_->schedule_fn([ptr = strong_this()] {
     event_handler_ptr next;
     if (ptr->handler_->do_handover(next)) {
       ptr->handler_.swap(next);

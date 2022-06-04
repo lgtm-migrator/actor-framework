@@ -49,7 +49,7 @@ public:
 
   // -- initialization ---------------------------------------------------------
 
-  void init(socket_manager* owner, stream_oriented::lower_layer* down);
+  void init(stream_oriented::lower_layer* down);
 
   // -- properties -------------------------------------------------------------
 
@@ -84,6 +84,8 @@ public:
   void suspend_reading() override;
 
   bool is_reading() const noexcept override;
+
+  void write_later() override;
 
   void shutdown(status code, std::string_view desc) override;
 

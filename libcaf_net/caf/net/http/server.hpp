@@ -81,6 +81,8 @@ public:
 
   bool is_reading() const noexcept override;
 
+  void write_later() override;
+
   void shutdown() override;
 
   void request_messages() override;
@@ -101,7 +103,7 @@ public:
 
   // -- stream_oriented::upper_layer implementation ----------------------------
 
-  error init(socket_manager* owner, stream_oriented::lower_layer* down,
+  error init(stream_oriented::lower_layer* down,
              const settings& config) override;
 
   void abort(const error& reason) override;

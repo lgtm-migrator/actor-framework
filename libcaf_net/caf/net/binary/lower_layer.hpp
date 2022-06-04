@@ -7,39 +7,13 @@
 #include "caf/detail/net_export.hpp"
 #include "caf/error.hpp"
 #include "caf/fwd.hpp"
-#include "caf/net/fwd.hpp"
+#include "caf/net/binary/fwd.hpp"
 #include "caf/net/generic_lower_layer.hpp"
-#include "caf/net/generic_upper_layer.hpp"
 
-namespace caf::net::message_oriented {
+namespace caf::net::binary {
 
-class lower_layer;
-
-/// Consumes binary messages from the lower layer.
-class CAF_NET_EXPORT upper_layer : public generic_upper_layer {
-public:
-  virtual ~upper_layer();
-
-  /// Initializes the upper layer.
-  /// @param owner A pointer to the socket manager that owns the entire
-  ///              protocol stack. Remains valid for the lifetime of the upper
-  ///              layer.
-  /// @param down A pointer to the lower layer that remains valid for the
-  ///             lifetime of the upper layer.
-  virtual error
-  init(socket_manager* owner, lower_layer* down, const settings& config)
-    = 0;
-
-  /// Consumes bytes from the lower layer.
-  /// @param payload Payload of the received message.
-  /// @returns The number of consumed bytes or a negative value to signal an
-  ///          error.
-  /// @note Discarded data is lost permanently.
-  [[nodiscard]] virtual ptrdiff_t consume(byte_span payload) = 0;
-};
-
-/// Provides access to a resource that operates on the granularity of messages,
-/// e.g., a UDP socket.
+/// Provides access to a resource that operates on the granularity of binary
+/// messages.
 class CAF_NET_EXPORT lower_layer : public generic_lower_layer {
 public:
   virtual ~lower_layer();
@@ -67,4 +41,4 @@ public:
   virtual bool end_message() = 0;
 };
 
-} // namespace caf::net::message_oriented
+} // namespace caf::net::binary

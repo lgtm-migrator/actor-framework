@@ -33,6 +33,9 @@ caf_add_component(
     src/detail/rfc6455.cpp
     src/net/abstract_actor_shell.cpp
     src/net/actor_shell.cpp
+    src/net/binary/frame.cpp
+    src/net/binary/lower_layer.cpp
+    src/net/binary/upper_layer.cpp
     src/net/datagram_socket.cpp
     src/net/generic_lower_layer.cpp
     src/net/generic_upper_layer.cpp
@@ -48,7 +51,6 @@ caf_add_component(
     src/net/http/v1.cpp
     src/net/ip.cpp
     src/net/length_prefix_framing.cpp
-    src/net/message_oriented.cpp
     src/net/middleman.cpp
     src/net/multiplexer.cpp
     src/net/network_socket.cpp
@@ -88,7 +90,6 @@ caf_add_component(
     detail.rfc6455
     net.accept_socket
     net.actor_shell
-    net.consumer_adapter
     net.datagram_socket
     net.http.server
     net.ip
@@ -97,7 +98,6 @@ caf_add_component(
     net.network_socket
     net.operation
     net.pipe_socket
-    net.producer_adapter
     net.prometheus.server
     net.socket
     net.socket_guard

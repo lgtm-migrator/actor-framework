@@ -48,9 +48,7 @@ void http_flow_adapter::abort(const error&) {
     pending.dispose();
 }
 
-error http_flow_adapter::init(net::socket_manager* owner,
-                              net::http::lower_layer* down, const settings&) {
-  parent_ = owner->mpx_ptr();
+error http_flow_adapter::init(net::http::lower_layer* down, const settings&) {
   down_ = down;
   down_->request_messages();
   return none;
@@ -69,7 +67,7 @@ ptrdiff_t http_flow_adapter::consume(const net::http::header& hdr,
   auto buf = std::vector<std::byte>{payload.begin(), payload.end()};
   auto impl = request::impl{hdr, std::move(buf), std::move(prom)};
   producer_->push(request{std::make_shared<request::impl>(std::move(impl))});
-  auto hdl = fut.bind_to(parent_).then(
+  auto hdl = fut.bind_to(*loop_).then(
     [this](const response& res) {
       down_->begin_header(res.code());
       for (auto& [key, val] : res.header_fields())

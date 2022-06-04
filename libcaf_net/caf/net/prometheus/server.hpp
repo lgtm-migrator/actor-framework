@@ -61,8 +61,7 @@ public:
 
   void abort(const error& reason) override;
 
-  error init(socket_manager* owner, http::lower_layer* down,
-             const settings& config) override;
+  error init(http::lower_layer* down, const settings& config) override;
 
   ptrdiff_t consume(const http::header& hdr, const_byte_span payload) override;
 

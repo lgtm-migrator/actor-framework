@@ -31,13 +31,13 @@ void connect(actor_system& sys, Socket fd, handshake hs, Init init) {
   auto [ws_pull, app_push] = async::make_spsc_buffer_resource<frame>();
   auto [app_pull, ws_push] = async::make_spsc_buffer_resource<frame>();
   using conn_t = flow_connector_trivial_impl<trait_t>;
-  auto& mpx = sys.network_manager().mpx();
+  auto mpx = sys.network_manager().mpx_ptr();
   auto conn = std::make_shared<conn_t>(std::move(ws_pull), std::move(ws_push));
-  auto bridge = flow_bridge<trait_t>::make(std::move(conn));
+  auto bridge = flow_bridge<trait_t>::make(mpx, std::move(conn));
   auto impl = client::make(std::move(hs), std::move(bridge));
   auto transport = Transport::make(fd, std::move(impl));
-  auto ptr = socket_manager::make(&mpx, fd, std::move(transport));
-  mpx.init(ptr);
+  auto ptr = socket_manager::make(mpx, fd, std::move(transport));
+  mpx->init(ptr);
   init(connect_event_t{app_pull, app_push});
 }
 

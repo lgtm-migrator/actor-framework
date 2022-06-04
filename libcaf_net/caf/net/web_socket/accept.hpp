@@ -33,7 +33,7 @@ public:
 
   template <class Socket>
   net::socket_manager_ptr make(net::multiplexer* mpx, Socket fd) {
-    auto app = net::web_socket::flow_bridge<Trait>::make(connector_);
+    auto app = net::web_socket::flow_bridge<Trait>::make(mpx, connector_);
     auto ws = net::web_socket::server::make(std::move(app));
     auto transport = Transport::make(fd, std::move(ws));
     return net::socket_manager::make(mpx, fd, std::move(transport));

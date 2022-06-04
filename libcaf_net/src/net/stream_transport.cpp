@@ -77,7 +77,7 @@ void stream_transport::configure_read(receive_policy rd) {
   min_read_size_ = rd.min_size;
   max_read_size_ = rd.max_size;
   if (restarting && !parent_->is_reading()) {
-    if (buffered_ >= min_read_size_) {
+    if (buffered_ > 0 && buffered_ >= min_read_size_) {
       // We can already make progress with the data we have. Hence, we need
       // schedule a call to read from our buffer before we can wait for
       // additional data from the peer.
@@ -111,6 +111,10 @@ bool stream_transport::is_reading() const noexcept {
   return max_read_size_ > 0;
 }
 
+void stream_transport::write_later() {
+  parent_->register_writing();
+}
+
 void stream_transport::shutdown() {
   if (write_buf_.empty()) {
     parent_->shutdown();
@@ -141,7 +145,7 @@ error stream_transport::init(socket_manager* owner, const settings& config) {
     CAF_LOG_ERROR("send_buffer_size: " << socket_buf_size.error());
     return std::move(socket_buf_size.error());
   }
-  return up_->init(owner, this, config);
+  return up_->init(this, config);
 }
 
 void stream_transport::handle_read_event() {
@@ -214,7 +218,6 @@ void stream_transport::handle_buffered_data() {
   // Loop until we have drained the buffer as much as we can.
   CAF_ASSERT(min_read_size_ <= max_read_size_);
   while (max_read_size_ > 0 && buffered_ >= min_read_size_) {
-    auto old_max_read_size = max_read_size_;
     auto n = std::min(buffered_, size_t{max_read_size_});
     auto bytes = make_span(read_buf_.data(), n);
     auto delta = bytes.subspan(delta_offset_);
@@ -225,21 +228,6 @@ void stream_transport::handle_buffered_data() {
       up_->abort(make_error(caf::sec::runtime_error, "consumed < 0"));
       parent_->deregister();
       return;
-    } else if (consumed == 0) {
-      // Returning 0 means that the application wants more data. Note:
-      // max_read_size_ may have changed if the application realized it
-      // requires more data to parse the input. It may of course only increase
-      // the max_read_size_ in this case, everything else makes no sense.
-      delta_offset_ = static_cast<ptrdiff_t>(n);
-      if (n == max_read_size_ || max_read_size_ < old_max_read_size) {
-        CAF_LOG_ERROR("application failed to make progress");
-        return fail(make_error(sec::runtime_error));
-      } else if (n == buffered_) {
-        // Either the application has increased max_read_size_ or we
-        // did not reach max_read_size_ the first time. In both cases, we
-        // cannot proceed without receiving more data.
-        return;
-      }
     } else if (static_cast<size_t>(consumed) > n) {
       // Must not happen. An application cannot handle more data then we pass
       // to it.
@@ -252,7 +240,7 @@ void stream_transport::handle_buffered_data() {
       auto del = static_cast<size_t>(consumed);
       auto prev = buffered_;
       buffered_ -= del;
-      delta_offset_ = 0;
+      delta_offset_ = static_cast<ptrdiff_t>(n - del);
       if (buffered_ > 0) {
         auto new_begin = read_buf_.begin() + del;
         auto new_end = read_buf_.begin() + prev;
@@ -267,7 +255,9 @@ void stream_transport::handle_buffered_data() {
 void stream_transport::fail(const error& reason) {
   CAF_LOG_TRACE(CAF_ARG(reason));
   up_->abort(reason);
+  up_.reset();
   parent_->deregister();
+  parent_->shutdown();
 }
 
 void stream_transport::handle_write_event() {

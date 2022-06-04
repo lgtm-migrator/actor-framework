@@ -24,11 +24,10 @@ length_prefix_framing::make(upper_layer_ptr up) {
 
 // -- implementation of stream_oriented::upper_layer ---------------------------
 
-error length_prefix_framing::init(socket_manager* owner,
-                                  stream_oriented::lower_layer* down,
+error length_prefix_framing::init(stream_oriented::lower_layer* down,
                                   const settings& cfg) {
   down_ = down;
-  return up_->init(owner, this, cfg);
+  return up_->init(this, cfg);
 }
 
 void length_prefix_framing::abort(const error& reason) {
@@ -48,8 +47,10 @@ ptrdiff_t length_prefix_framing::consume(byte_span input, byte_span) {
     auto msg_size = static_cast<size_t>(detail::from_network_order(u32_size));
     if (msg_size == 0) {
       // Ignore empty messages.
-      CAF_LOG_DEBUG("received empty message");
-      return static_cast<ptrdiff_t>(input.size());
+      CAF_LOG_ERROR("received empty message");
+      up_->abort(make_error(sec::logic_error,
+                            "received empty buffer from stream layer"));
+      return -1;
     } else if (msg_size > max_message_length) {
       CAF_LOG_DEBUG("exceeded maximum message size");
       up_->abort(
@@ -87,7 +88,7 @@ bool length_prefix_framing::done_sending() {
   return up_->done_sending();
 }
 
-// -- implementation of message_oriented::lower_layer --------------------------
+// -- implementation of binary::lower_layer ------------------------------------
 
 bool length_prefix_framing::can_send_more() const noexcept {
   return down_->can_send_more();
@@ -99,6 +100,10 @@ void length_prefix_framing::suspend_reading() {
 
 bool length_prefix_framing::is_reading() const noexcept {
   return down_->is_reading();
+}
+
+void length_prefix_framing::write_later() {
+  down_->write_later();
 }
 
 void length_prefix_framing::request_messages() {

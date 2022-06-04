@@ -18,9 +18,13 @@ public:
   /// Queries whether the output device can accept more data straight away.
   [[nodiscard]] virtual bool can_send_more() const noexcept = 0;
 
-  /// Queries whether the lower layer is currently configured to halt receiving
-  /// of additional bytes or messages.
+  /// Queries whether the lower layer is currently reading from its input
+  /// device.
   [[nodiscard]] virtual bool is_reading() const noexcept = 0;
+
+  /// Triggers a write callback after the write device signals downstream
+  /// capacity. Does nothing if this layer is already writing.
+  virtual void write_later() = 0;
 
   /// Shuts down any connection or session gracefully. Any pending data gets
   /// flushed before closing the socket.

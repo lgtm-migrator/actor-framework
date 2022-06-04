@@ -123,6 +123,8 @@ public:
 
   bool is_reading() const noexcept override;
 
+  void write_later() override;
+
   void shutdown() override;
 
   // -- properties -------------------------------------------------------------

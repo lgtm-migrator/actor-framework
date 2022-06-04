@@ -52,8 +52,9 @@ using http_request_producer_ptr = intrusive_ptr<http_request_producer>;
 
 class CAF_NET_EXPORT http_flow_adapter : public net::http::upper_layer {
 public:
-  explicit http_flow_adapter(http_request_producer_ptr ptr)
-    : producer_(std::move(ptr)) {
+  explicit http_flow_adapter(async::execution_context_ptr loop,
+                             http_request_producer_ptr ptr)
+    : loop_(std::move(loop)), producer_(std::move(ptr)) {
     // nop
   }
 
@@ -63,18 +64,18 @@ public:
 
   void abort(const error& reason) override;
 
-  error init(net::socket_manager* owner, net::http::lower_layer* down,
-             const settings& config) override;
+  error init(net::http::lower_layer* down, const settings& config) override;
 
   ptrdiff_t consume(const net::http::header& hdr,
                     const_byte_span payload) override;
 
-  static auto make(http_request_producer_ptr ptr) {
-    return std::make_unique<http_flow_adapter>(ptr);
+  static auto make(async::execution_context_ptr loop,
+                   http_request_producer_ptr ptr) {
+    return std::make_unique<http_flow_adapter>(loop, ptr);
   }
 
 private:
-  async::execution_context* parent_ = nullptr;
+  async::execution_context_ptr loop_;
   net::http::lower_layer* down_ = nullptr;
   std::vector<disposable> pending_;
   http_request_producer_ptr producer_;
@@ -94,7 +95,7 @@ public:
 
   template <class Socket>
   net::socket_manager_ptr make(net::multiplexer* mpx, Socket fd) {
-    auto app = http_flow_adapter::make(producer_);
+    auto app = http_flow_adapter::make(mpx, producer_);
     auto serv = net::http::server::make(std::move(app));
     auto transport = Transport::make(fd, std::move(serv));
     auto res = net::socket_manager::make(mpx, fd, std::move(transport));

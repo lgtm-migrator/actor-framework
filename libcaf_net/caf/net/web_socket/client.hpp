@@ -71,7 +71,7 @@ public:
 
   // -- implementation of stream_oriented::upper_layer -------------------------
 
-  error init(socket_manager* owner, stream_oriented::lower_layer* down,
+  error init(stream_oriented::lower_layer* down,
              const settings& config) override;
 
   void abort(const error& reason) override;
@@ -94,9 +94,6 @@ private:
 
   /// Stores the upper layer.
   framing framing_;
-
-  /// Stores a pointer to the owning manager for the delayed initialization.
-  socket_manager* owner_ = nullptr;
 
   settings cfg_;
 };

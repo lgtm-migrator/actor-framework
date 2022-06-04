@@ -34,6 +34,8 @@ public:
 
   bool is_reading() const noexcept override;
 
+  void write_later() override;
+
   void shutdown() override;
 
   void configure_read(caf::net::receive_policy policy) override;
@@ -47,7 +49,7 @@ public:
   // -- initialization ---------------------------------------------------------
 
   caf::error init(const caf::settings& cfg) {
-    return up->init(nullptr, this, cfg);
+    return up->init(this, cfg);
   }
 
   caf::error init() {

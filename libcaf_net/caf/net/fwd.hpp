@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "caf/async/fwd.hpp"
+#include "caf/fwd.hpp"
 #include "caf/intrusive_ptr.hpp"
 #include "caf/type_id.hpp"
 
@@ -54,5 +56,27 @@ using socket_manager_ptr = intrusive_ptr<socket_manager>;
 // -- miscellaneous aliases ----------------------------------------------------
 
 using text_buffer = std::vector<char>;
+
+// -- factory functions --------------------------------------------------------
+
+template <class>
+struct actor_shell_ptr_oracle;
+
+template <>
+struct actor_shell_ptr_oracle<actor> {
+  using type = actor_shell_ptr;
+};
+
+template <class... Sigs>
+struct actor_shell_ptr_oracle<typed_actor<Sigs...>> {
+  using type = typed_actor_shell_ptr<Sigs...>;
+};
+
+template <class Handle>
+using actor_shell_ptr_t = typename actor_shell_ptr_oracle<Handle>::type;
+
+template <class Handle = caf::actor>
+actor_shell_ptr_t<Handle>
+make_actor_shell(actor_system&, async::execution_context_ptr);
 
 } // namespace caf::net

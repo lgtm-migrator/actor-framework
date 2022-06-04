@@ -16,7 +16,7 @@
 
 #include <utility>
 
-namespace caf::net::web_socket {
+namespace caf::net::binary {
 
 /// Translates between a message-oriented transport and data flows.
 template <class Trait>
@@ -36,27 +36,18 @@ public:
 
   using connector_pointer = flow_connector_ptr<Trait>;
 
-  explicit flow_bridge(async::execution_context_ptr loop,
-                       connector_pointer conn)
-    : loop_(std::move(loop)), conn_(std::move(conn)) {
+  explicit flow_bridge(connector_pointer conn) : conn_(std::move(conn)) {
     // nop
   }
 
-  static std::unique_ptr<flow_bridge> make(async::execution_context_ptr loop,
-                                           connector_pointer conn) {
-    return std::make_unique<flow_bridge>(std::move(loop), std::move(conn));
+  static std::unique_ptr<flow_bridge> make(connector_pointer conn) {
+    return std::make_unique<flow_bridge>(std::move(conn));
   }
 
   bool write(const output_type& item) {
-    if (trait_.converts_to_binary(item)) {
-      down_->begin_binary_message();
-      auto& bytes = down_->binary_message_buffer();
-      return trait_.convert(item, bytes) && down_->end_binary_message();
-    } else {
-      down_->begin_text_message();
-      auto& text = down_->text_message_buffer();
-      return trait_.convert(item, text) && down_->end_text_message();
-    }
+    down_->begin_message();
+    auto& bytes = down_->message_buffer();
+    return trait_.convert(item, bytes) && down_->end_message();
   }
 
   bool running() const noexcept {
@@ -65,7 +56,9 @@ public:
 
   // -- implementation of web_socket::lower_layer ------------------------------
 
-  error init(web_socket::lower_layer* down, const settings& cfg) override {
+  error init(net::socket_manager* mgr, web_socket::lower_layer* down,
+             const settings& cfg) override {
+    CAF_ASSERT(mgr != nullptr);
     down_ = down;
     auto [err, pull, push] = conn_->on_request(cfg);
     if (!err) {
@@ -79,9 +72,10 @@ public:
         if (!running())
           down_->shutdown();
       });
-      in_ = consumer_type::make(pull.try_open(), loop_, std::move(do_wakeup));
-      out_ = producer_type::make(push.try_open(), loop_, std::move(do_resume),
-                                 std::move(do_cancel));
+      in_ = consumer_type::make(pull.try_open(), mgr->mpx_ptr(),
+                                std::move(do_wakeup));
+      out_ = producer_type::make(push.try_open(), mgr->mpx_ptr(),
+                                 std::move(do_resume), std::move(do_cancel));
       conn_ = nullptr;
       if (running())
         return none;
@@ -155,7 +149,7 @@ public:
   }
 
 private:
-  web_socket::lower_layer* down_;
+  binary::lower_layer* down_;
 
   /// The output of the application. Serialized to the socket.
   consumer_type in_;
@@ -166,11 +160,8 @@ private:
   /// Converts between raw bytes and native C++ objects.
   Trait trait_;
 
-  /// Runs callbacks in the I/O event loop.
-  async::execution_context_ptr loop_;
-
   /// Initializes the bridge. Disposed (set to null) after initializing.
   connector_pointer conn_;
 };
 
-} // namespace caf::net::web_socket
+} // namespace caf::net::binary

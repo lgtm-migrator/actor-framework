@@ -33,8 +33,7 @@ public:
     return std::make_unique<app_t>();
   }
 
-  error init(net::socket_manager*, net::web_socket::lower_layer*,
-             const settings& init_cfg) override {
+  error init(net::web_socket::lower_layer*, const settings& init_cfg) override {
     cfg = init_cfg;
     return none;
   }

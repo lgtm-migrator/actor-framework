@@ -10,7 +10,7 @@ namespace caf::net::web_socket {
 
 // -- initialization ---------------------------------------------------------
 
-void framing::init(socket_manager*, stream_oriented::lower_layer* down) {
+void framing::init(stream_oriented::lower_layer* down) {
   std::random_device rd;
   rng_.seed(rd());
   down_ = down;
@@ -28,6 +28,10 @@ void framing::suspend_reading() {
 
 bool framing::is_reading() const noexcept {
   return down_->is_reading();
+}
+
+void framing::write_later() {
+  down_->write_later();
 }
 
 void framing::shutdown(status code, std::string_view msg) {

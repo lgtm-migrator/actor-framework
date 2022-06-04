@@ -17,7 +17,8 @@
 #include "caf/byte_buffer.hpp"
 #include "caf/byte_span.hpp"
 #include "caf/detail/network_order.hpp"
-#include "caf/net/message_oriented.hpp"
+#include "caf/net/binary/lower_layer.hpp"
+#include "caf/net/binary/upper_layer.hpp"
 #include "caf/net/multiplexer.hpp"
 #include "caf/net/socket_guard.hpp"
 #include "caf/net/socket_manager.hpp"
@@ -35,21 +36,21 @@ using string_list = std::vector<std::string>;
 using shared_string_list = std::shared_ptr<string_list>;
 
 template <bool EnableSuspend>
-class app_t : public net::message_oriented::upper_layer {
+class app_t : public net::binary::upper_layer {
 public:
-  static auto make(shared_string_list inputs) {
-    return std::make_unique<app_t>(std::move(inputs));
-  }
-
-  app_t(shared_string_list ls_ptr) : inputs(std::move(ls_ptr)) {
+  app_t(async::execution_context_ptr loop, shared_string_list ls_ptr)
+    : loop(std::move(loop)), inputs(std::move(ls_ptr)) {
     // nop
   }
 
-  caf::error init(net::socket_manager* mgr_ptr,
-                  net::message_oriented::lower_layer* down_ptr,
+  static auto make(async::execution_context_ptr loop,
+                   shared_string_list inputs) {
+    return std::make_unique<app_t>(std::move(loop), std::move(inputs));
+  }
+
+  caf::error init(net::binary::lower_layer* down_ptr,
                   const settings&) override {
     // Start reading immediately.
-    mgr = mgr_ptr;
     down = down_ptr;
     down->request_messages();
     return none;
@@ -63,12 +64,12 @@ public:
     return true;
   }
 
-  void abort(const error&) override {
-    // nop
+  void abort(const error& err) override {
+    MESSAGE("abort: " << err);
   }
 
   void continue_reading() {
-    mgr->schedule_fn([this] { down->request_messages(); });
+    loop->schedule_fn([this] { down->request_messages(); });
   }
 
   ptrdiff_t consume(byte_span buf) override {
@@ -97,9 +98,9 @@ public:
     }
   }
 
-  net::socket_manager* mgr = nullptr;
+  async::execution_context_ptr loop;
 
-  net::message_oriented::lower_layer* down = nullptr;
+  net::binary::lower_layer* down = nullptr;
 
   shared_string_list inputs;
 };
@@ -140,7 +141,7 @@ SCENARIO("length-prefix framing reads data with 32-bit size headers") {
   GIVEN("a length_prefix_framing with an app that consumes strings") {
     WHEN("pushing data into the unit-under-test") {
       auto buf = std::make_shared<string_list>();
-      auto app = app_t<false>::make(buf);
+      auto app = app_t<false>::make(nullptr, buf);
       auto framing = net::length_prefix_framing::make(std::move(app));
       auto uut = mock_stream_transport::make(std::move(framing));
       CHECK_EQ(uut->init(), error{});
@@ -186,7 +187,7 @@ SCENARIO("calling suspend_reading temporarily halts receiving of messages") {
     if (auto err = net::nonblocking(fd2, true))
       CAF_FAIL("nonblocking returned an error: " << err);
     auto buf = std::make_shared<string_list>();
-    auto app = app_t<true>::make(buf);
+    auto app = app_t<true>::make(mpx, buf);
     auto app_ptr = app.get();
     auto framing = net::length_prefix_framing::make(std::move(app));
     auto transport = net::stream_transport::make(fd2, std::move(framing));

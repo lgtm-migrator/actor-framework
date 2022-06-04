@@ -48,8 +48,7 @@ public:
 
   // -- implementation of http::upper_layer ------------------------------------
 
-  error init(net::socket_manager*, net::http::lower_layer* down_ptr,
-             const settings&) override {
+  error init(net::http::lower_layer* down_ptr, const settings&) override {
     down = down_ptr;
     down->request_messages();
     return none;

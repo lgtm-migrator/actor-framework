@@ -50,26 +50,6 @@ public:
   static socket_manager_ptr make(multiplexer* mpx, socket handle,
                                  event_handler_ptr handler);
 
-  template <class Handle = actor, class FallbackHandler>
-  detail::infer_actor_shell_ptr_type<Handle>
-  make_actor_shell(FallbackHandler f) {
-    using ptr_type = detail::infer_actor_shell_ptr_type<Handle>;
-    using impl_type = typename ptr_type::element_type;
-    auto hdl = system().spawn<impl_type>(this);
-    auto ptr = ptr_type{actor_cast<strong_actor_ptr>(std::move(hdl))};
-    ptr->set_fallback(std::move(f));
-    return ptr;
-  }
-
-  template <class Handle = actor>
-  auto make_actor_shell() {
-    auto f = [](abstract_actor_shell* self, message& msg) -> result<message> {
-      self->quit(make_error(sec::unexpected_message, std::move(msg)));
-      return make_error(sec::unexpected_message);
-    };
-    return make_actor_shell<Handle>(std::move(f));
-  }
-
   // -- properties -------------------------------------------------------------
 
   /// Returns the handle for the managed socket.

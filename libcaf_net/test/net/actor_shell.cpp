@@ -11,6 +11,7 @@
 #include "caf/byte.hpp"
 #include "caf/byte_span.hpp"
 #include "caf/callback.hpp"
+#include "caf/net/make_actor_shell.hpp"
 #include "caf/net/middleman.hpp"
 #include "caf/net/socket_guard.hpp"
 #include "caf/net/socket_manager.hpp"
@@ -26,24 +27,20 @@ using svec = std::vector<std::string>;
 
 class app_t : public net::stream_oriented::upper_layer {
 public:
-  app_t() = default;
-
-  explicit app_t(actor hdl) : worker(std::move(hdl)) {
-    // nop
+  explicit app_t(actor_system& sys, async::execution_context_ptr loop,
+                 actor hdl = {})
+    : worker(std::move(hdl)) {
+    self = net::make_actor_shell(sys, loop);
   }
 
-  static auto make() {
-    return std::make_unique<app_t>();
+  static auto make(actor_system& sys, async::execution_context_ptr loop,
+                   actor hdl = {}) {
+    return std::make_unique<app_t>(sys, std::move(loop), std::move(hdl));
   }
 
-  static auto make(actor hdl) {
-    return std::make_unique<app_t>(std::move(hdl));
-  }
-
-  error init(net::socket_manager* mgr, net::stream_oriented::lower_layer* down,
+  error init(net::stream_oriented::lower_layer* down,
              const settings&) override {
     this->down = down;
-    self = mgr->make_actor_shell();
     self->set_behavior([this](std::string& line) {
       CAF_MESSAGE("received an asynchronous message: " << line);
       lines.emplace_back(std::move(line));
@@ -60,16 +57,15 @@ public:
   }
 
   void prepare_send() override {
-    while (!self->terminated() && self->consume_message())
-      ; // repeat
+    // nop
   }
 
   bool done_sending() override {
-    return self->try_block_mailbox();
+    return true;
   }
 
-  void abort(const error&) override {
-    // nop
+  void abort(const error& reason) override {
+    MESSAGE("abort: " << reason);
   }
 
   ptrdiff_t consume(byte_span buf, byte_span) override {
@@ -197,7 +193,7 @@ CAF_TEST_FIXTURE_SCOPE(actor_shell_tests, fixture)
 
 CAF_TEST(actor shells expose their mailbox to their owners) {
   auto fd = testee_socket_guard.release();
-  auto app_uptr = app_t::make();
+  auto app_uptr = app_t::make(sys, mpx);
   auto app = app_uptr.get();
   auto transport = net::stream_transport::make(fd, std::move(app_uptr));
   auto mgr = net::socket_manager::make(mpx.get(), fd, std::move(transport));
@@ -209,6 +205,8 @@ CAF_TEST(actor shells expose their mailbox to their owners) {
   anon_send(hdl, "line 3");
   run_while([&] { return app->lines.size() != 3; });
   CAF_CHECK_EQUAL(app->lines, svec({"line 1", "line 2", "line 3"}));
+  self_socket_guard.reset();
+  run_while([&] { return mpx->num_socket_managers() > 1; });
 }
 
 CAF_TEST(actor shells can send requests and receive responses) {
@@ -218,7 +216,7 @@ CAF_TEST(actor shells can send requests and receive responses) {
     };
   });
   auto fd = testee_socket_guard.release();
-  auto app_uptr = app_t::make(worker);
+  auto app_uptr = app_t::make(sys, mpx, worker);
   auto app = app_uptr.get();
   auto transport = net::stream_transport::make(fd, std::move(app_uptr));
   auto mgr = net::socket_manager::make(mpx.get(), fd, std::move(transport));
@@ -232,6 +230,8 @@ CAF_TEST(actor shells can send requests and receive responses) {
   std::string_view received_response{reinterpret_cast<char*>(recv_buf.data()),
                                      recv_buf.size()};
   CAF_CHECK_EQUAL(received_response, expected_response);
+  self_socket_guard.reset();
+  run_while([&] { return mpx->num_socket_managers() > 1; });
 }
 
 CAF_TEST_FIXTURE_SCOPE_END()

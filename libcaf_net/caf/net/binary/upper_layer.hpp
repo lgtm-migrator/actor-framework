@@ -4,15 +4,15 @@
 
 #pragma once
 
-#include "caf/error.hpp"
+#include "caf/detail/net_export.hpp"
 #include "caf/fwd.hpp"
+#include "caf/net/binary/fwd.hpp"
 #include "caf/net/fwd.hpp"
 #include "caf/net/generic_upper_layer.hpp"
-#include "caf/net/http/fwd.hpp"
 
-namespace caf::net::http {
+namespace caf::net::binary {
 
-/// Operates on HTTP requests.
+/// Consumes binary messages from the lower layer.
 class CAF_NET_EXPORT upper_layer : public generic_upper_layer {
 public:
   virtual ~upper_layer();
@@ -20,15 +20,15 @@ public:
   /// Initializes the upper layer.
   /// @param down A pointer to the lower layer that remains valid for the
   ///             lifetime of the upper layer.
+  /// @param config Protocol-dependent configuration parameters.
   virtual error init(lower_layer* down, const settings& config) = 0;
 
-  /// Consumes an HTTP message.
-  /// @param hdr The header fields for the received message.
-  /// @param payload The payload of the received message.
+  /// Consumes bytes from the lower layer.
+  /// @param payload Payload of the received message.
   /// @returns The number of consumed bytes or a negative value to signal an
   ///          error.
   /// @note Discarded data is lost permanently.
-  virtual ptrdiff_t consume(const header& hdr, const_byte_span payload) = 0;
+  [[nodiscard]] virtual ptrdiff_t consume(byte_span payload) = 0;
 };
 
-} // namespace caf::net::http
+} // namespace caf::net::binary

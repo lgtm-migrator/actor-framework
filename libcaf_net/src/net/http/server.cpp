@@ -18,6 +18,10 @@ bool server::is_reading() const noexcept {
   return down_->is_reading();
 }
 
+void server::write_later() {
+  down_->write_later();
+}
+
 void server::shutdown() {
   down_->shutdown();
 }
@@ -76,14 +80,14 @@ bool server::send_end_of_chunks() {
 
 // -- stream_oriented::upper_layer implementation ------------------------------
 
-error server::init(socket_manager* owner, stream_oriented::lower_layer* down,
-                   const settings& cfg) {
+error server::init(stream_oriented::lower_layer* down, const settings& cfg) {
   down_ = down;
   if (auto max_size = get_as<uint32_t>(cfg, "http.max-request-size"))
     max_request_size_ = *max_size;
-  if (auto err = up_->init(owner, this, cfg))
+  if (auto err = up_->init(this, cfg))
     return err;
-  return none;
+  else
+    return none;
 }
 
 void server::abort(const error& reason) {

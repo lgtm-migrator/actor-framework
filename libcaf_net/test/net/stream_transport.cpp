@@ -75,7 +75,7 @@ public:
 
   net::stream_oriented::lower_layer* down;
 
-  error init(net::socket_manager*, net::stream_oriented::lower_layer* down_ptr,
+  error init(net::stream_oriented::lower_layer* down_ptr,
              const settings&) override {
     down = down_ptr;
     down->configure_read(net::receive_policy::exactly(hello_manager.size()));
