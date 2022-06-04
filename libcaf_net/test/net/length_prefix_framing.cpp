@@ -48,8 +48,8 @@ public:
     return std::make_unique<app_t>(std::move(loop), std::move(inputs));
   }
 
-  caf::error init(net::binary::lower_layer* down_ptr,
-                  const settings&) override {
+  caf::error start(net::binary::lower_layer* down_ptr,
+                   const settings&) override {
     // Start reading immediately.
     down = down_ptr;
     down->request_messages();
@@ -144,7 +144,7 @@ SCENARIO("length-prefix framing reads data with 32-bit size headers") {
       auto app = app_t<false>::make(nullptr, buf);
       auto framing = net::length_prefix_framing::make(std::move(app));
       auto uut = mock_stream_transport::make(std::move(framing));
-      CHECK_EQ(uut->init(), error{});
+      CHECK_EQ(uut->start(), error{});
       THEN("the app receives all strings as individual messages") {
         encode(uut->input, "hello");
         encode(uut->input, "world");
@@ -191,8 +191,8 @@ SCENARIO("calling suspend_reading temporarily halts receiving of messages") {
     auto app_ptr = app.get();
     auto framing = net::length_prefix_framing::make(std::move(app));
     auto transport = net::stream_transport::make(fd2, std::move(framing));
-    auto mgr = net::socket_manager::make(mpx.get(), fd2, std::move(transport));
-    CHECK_EQ(mgr->init(settings{}), none);
+    auto mgr = net::socket_manager::make(mpx.get(), std::move(transport));
+    CHECK_EQ(mgr->start(settings{}), none);
     mpx->apply_updates();
     REQUIRE_EQ(mpx->num_socket_managers(), 2u);
     CHECK_EQ(mpx->mask_of(mgr), net::operation::read);

@@ -59,8 +59,8 @@ public:
     *done_ = true;
   }
 
-  error init(net::stream_oriented::lower_layer* down,
-             const settings&) override {
+  error start(net::stream_oriented::lower_layer* down,
+              const settings&) override {
     MESSAGE("initialize dummy app");
     down_ = down;
     down->configure_read(receive_policy::exactly(4));
@@ -197,9 +197,8 @@ SCENARIO("ssl::transport::make_client performs the client handshake") {
         auto mock = mock_application::make(done, buf);
         auto transport = ssl::transport::make_client(std::move(conn),
                                                      std::move(mock));
-        auto mgr = net::socket_manager::make(mpx.get(), client_fd,
-                                             std::move(transport));
-        mpx->init(mgr);
+        auto mgr = net::socket_manager::make(mpx.get(), std::move(transport));
+        mpx->start(mgr);
         mpx->apply_updates();
         while (!*done)
           mpx->poll_once(true);
@@ -239,9 +238,8 @@ SCENARIO("ssl::transport::make_server performs the server handshake") {
         auto mock = mock_application::make(done, buf);
         auto transport = ssl::transport::make_server(std::move(conn),
                                                      std::move(mock));
-        auto mgr = net::socket_manager::make(mpx.get(), server_fd,
-                                             std::move(transport));
-        mpx->init(mgr);
+        auto mgr = net::socket_manager::make(mpx.get(), std::move(transport));
+        mpx->start(mgr);
         mpx->apply_updates();
         while (!*done)
           mpx->poll_once(true);

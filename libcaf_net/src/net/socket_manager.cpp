@@ -13,9 +13,11 @@ namespace caf::net {
 
 // -- constructors, destructors, and assignment operators ----------------------
 
-socket_manager::socket_manager(multiplexer* mpx, socket fd,
-                               event_handler_ptr handler)
-  : fd_(fd), mpx_(mpx), handler_(std::move(handler)), disposed_(false) {
+socket_manager::socket_manager(multiplexer* mpx, event_handler_ptr handler)
+  : fd_(handler->handle()),
+    mpx_(mpx),
+    handler_(std::move(handler)),
+    disposed_(false) {
   CAF_ASSERT(fd_ != invalid_socket);
   CAF_ASSERT(mpx_ != nullptr);
   CAF_ASSERT(handler_ != nullptr);
@@ -28,11 +30,10 @@ socket_manager::~socket_manager() {
 
 // -- factories ----------------------------------------------------------------
 
-socket_manager_ptr socket_manager::make(multiplexer* mpx, socket handle,
+socket_manager_ptr socket_manager::make(multiplexer* mpx,
                                         event_handler_ptr handler) {
   CAF_ASSERT(mpx != nullptr);
-  return make_counted<socket_manager>(std::move(mpx), handle,
-                                      std::move(handler));
+  return make_counted<socket_manager>(std::move(mpx), std::move(handler));
 }
 
 // -- properties ---------------------------------------------------------------
@@ -108,13 +109,14 @@ void socket_manager::shutdown() {
 
 // -- callbacks for the multiplexer --------------------------------------------
 
-error socket_manager::init(const settings& cfg) {
+error socket_manager::start(const settings& cfg) {
   CAF_LOG_TRACE(CAF_ARG(cfg));
   if (auto err = nonblocking(fd_, true)) {
     CAF_LOG_ERROR("failed to set nonblocking flag in socket:" << err);
     return err;
+  } else {
+    return handler_->start(this, cfg);
   }
-  return handler_->init(this, cfg);
 }
 
 void socket_manager::handle_read_event() {

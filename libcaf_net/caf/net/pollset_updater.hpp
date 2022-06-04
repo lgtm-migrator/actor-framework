@@ -25,7 +25,7 @@ public:
   using msg_buf = std::array<std::byte, sizeof(intptr_t) + 1>;
 
   enum class code : uint8_t {
-    init_manager,
+    start_manager,
     shutdown_reading,
     shutdown_writing,
     run_action,
@@ -42,7 +42,9 @@ public:
 
   // -- implementation of socket_event_layer -----------------------------------
 
-  error init(socket_manager* owner, const settings& cfg) override;
+  error start(socket_manager* owner, const settings& cfg) override;
+
+  socket handle() const override;
 
   void handle_read_event() override;
 

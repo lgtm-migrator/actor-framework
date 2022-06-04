@@ -20,7 +20,7 @@ namespace caf::net::binary {
 
 /// Translates between a message-oriented transport and data flows.
 template <class Trait>
-class flow_bridge : public web_socket::upper_layer {
+class flow_bridge : public upper_layer {
 public:
   using input_type = typename Trait::input_type;
 
@@ -56,8 +56,8 @@ public:
 
   // -- implementation of web_socket::lower_layer ------------------------------
 
-  error init(net::socket_manager* mgr, web_socket::lower_layer* down,
-             const settings& cfg) override {
+  error start(net::socket_manager* mgr, web_socket::lower_layer* down,
+              const settings& cfg) override {
     CAF_ASSERT(mgr != nullptr);
     down_ = down;
     auto [err, pull, push] = conn_->on_request(cfg);

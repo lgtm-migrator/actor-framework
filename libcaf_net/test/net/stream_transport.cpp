@@ -75,8 +75,8 @@ public:
 
   net::stream_oriented::lower_layer* down;
 
-  error init(net::stream_oriented::lower_layer* down_ptr,
-             const settings&) override {
+  error start(net::stream_oriented::lower_layer* down_ptr,
+              const settings&) override {
     down = down_ptr;
     down->configure_read(net::receive_policy::exactly(hello_manager.size()));
     return none;
@@ -116,11 +116,10 @@ BEGIN_FIXTURE_SCOPE(fixture)
 
 CAF_TEST(receive) {
   auto mock = mock_application::make(shared_recv_buf, shared_send_buf);
-  auto transport = net::stream_transport::make(recv_socket_guard.get(),
+  auto transport = net::stream_transport::make(recv_socket_guard.release(),
                                                std::move(mock));
-  auto mgr = net::socket_manager::make(mpx.get(), recv_socket_guard.release(),
-                                       std::move(transport));
-  CHECK_EQ(mgr->init(config), none);
+  auto mgr = net::socket_manager::make(mpx.get(), std::move(transport));
+  CHECK_EQ(mgr->start(config), none);
   mpx->apply_updates();
   CHECK_EQ(mpx->num_socket_managers(), 2u);
   CHECK_EQ(static_cast<size_t>(write(send_socket_guard.socket(),
@@ -135,11 +134,10 @@ CAF_TEST(receive) {
 
 CAF_TEST(send) {
   auto mock = mock_application::make(shared_recv_buf, shared_send_buf);
-  auto transport = net::stream_transport::make(recv_socket_guard.get(),
+  auto transport = net::stream_transport::make(recv_socket_guard.release(),
                                                std::move(mock));
-  auto mgr = net::socket_manager::make(mpx.get(), recv_socket_guard.release(),
-                                       std::move(transport));
-  CHECK_EQ(mgr->init(config), none);
+  auto mgr = net::socket_manager::make(mpx.get(), std::move(transport));
+  CHECK_EQ(mgr->start(config), none);
   mpx->apply_updates();
   CHECK_EQ(mpx->num_socket_managers(), 2u);
   mgr->register_writing();

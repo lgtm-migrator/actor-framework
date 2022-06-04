@@ -48,13 +48,13 @@ public:
 
   // -- initialization ---------------------------------------------------------
 
-  caf::error init(const caf::settings& cfg) {
-    return up->init(this, cfg);
+  caf::error start(const caf::settings& cfg) {
+    return up->start(this, cfg);
   }
 
-  caf::error init() {
+  caf::error start() {
     caf::settings cfg;
-    return init(cfg);
+    return start(cfg);
   }
 
   // -- buffer management ------------------------------------------------------

@@ -27,7 +27,7 @@ public:
     // nop
   }
 
-  error init(net::socket_manager*, const settings&) {
+  error start(net::socket_manager*, const settings&) {
     return none;
   }
 
@@ -36,7 +36,7 @@ public:
     auto app = net::web_socket::flow_bridge<Trait>::make(mpx, connector_);
     auto ws = net::web_socket::server::make(std::move(app));
     auto transport = Transport::make(fd, std::move(ws));
-    return net::socket_manager::make(mpx, fd, std::move(transport));
+    return net::socket_manager::make(mpx, std::move(transport));
   }
 
   void abort(const error&) {
@@ -97,8 +97,8 @@ void accept(actor_system& sys, Socket fd, acceptor_resource_t<Ts...> out,
     auto conn = std::make_shared<conn_t>(std::move(on_request), std::move(buf));
     auto factory = factory_t{std::move(conn)};
     auto impl = impl_t::make(fd, limit, std::move(factory));
-    auto ptr = socket_manager::make(&mpx, fd, std::move(impl));
-    mpx.init(ptr);
+    auto ptr = socket_manager::make(&mpx, std::move(impl));
+    mpx.start(ptr);
   }
   // TODO: accept() should return a disposable to stop the WebSocket server.
 }

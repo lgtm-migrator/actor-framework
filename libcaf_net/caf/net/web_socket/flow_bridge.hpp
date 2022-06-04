@@ -65,7 +65,7 @@ public:
 
   // -- implementation of web_socket::lower_layer ------------------------------
 
-  error init(web_socket::lower_layer* down, const settings& cfg) override {
+  error start(web_socket::lower_layer* down, const settings& cfg) override {
     down_ = down;
     auto [err, pull, push] = conn_->on_request(cfg);
     if (!err) {

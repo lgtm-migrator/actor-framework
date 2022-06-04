@@ -33,8 +33,8 @@ public:
     return std::make_unique<app_t>();
   }
 
-  error init(net::web_socket::lower_layer*, const settings& init_cfg) override {
-    cfg = init_cfg;
+  error start(net::web_socket::lower_layer*, const settings& args) override {
+    cfg = args;
     return none;
   }
 
@@ -69,7 +69,7 @@ struct fixture {
     auto ws_ptr = net::web_socket::server::make(std::move(app_ptr));
     ws = ws_ptr.get();
     transport = mock_stream_transport::make(std::move(ws_ptr));
-    if (auto err = transport->init())
+    if (auto err = transport->start())
       CAF_FAIL("failed to initialize mock transport: " << err);
     rng.seed(0xD3ADC0D3);
   }

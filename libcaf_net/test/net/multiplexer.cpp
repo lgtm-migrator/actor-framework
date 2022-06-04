@@ -63,9 +63,13 @@ public:
 
   // -- implementation of socket_event_layer -----------------------------------
 
-  error init(net::socket_manager* mgr, const settings&) override {
+  error start(net::socket_manager* mgr, const settings&) override {
     mgr_ = mgr;
     return none;
+  }
+
+  net::socket handle() const override {
+    return fd_;
   }
 
   void handle_read_event() override {
@@ -151,8 +155,8 @@ struct fixture {
   make_manager(net::stream_socket fd, std::string name) {
     auto mock = mock_event_layer::make(fd, std::move(name), manager_count);
     auto mock_ptr = mock.get();
-    auto mgr = net::socket_manager::make(mpx.get(), fd, std::move(mock));
-    std::ignore = mgr->init(settings{});
+    auto mgr = net::socket_manager::make(mpx.get(), std::move(mock));
+    std::ignore = mgr->start(settings{});
     return {mock_ptr, std::move(mgr)};
   }
 

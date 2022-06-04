@@ -109,7 +109,7 @@ public:
 
   /// Registers `mgr` for initialization in the multiplexer's thread.
   /// @thread-safe
-  void init(socket_manager_ptr mgr);
+  void start(socket_manager_ptr mgr);
 
   /// Signals the multiplexer to initiate shutdown.
   /// @thread-safe
@@ -227,7 +227,7 @@ private:
 
   void do_register_reading(const socket_manager_ptr& mgr);
 
-  void do_init(const socket_manager_ptr& mgr);
+  void do_start(const socket_manager_ptr& mgr);
 };
 
 } // namespace caf::net

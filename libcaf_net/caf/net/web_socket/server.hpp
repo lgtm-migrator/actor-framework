@@ -74,8 +74,8 @@ public:
 
   // -- stream_oriented::upper_layer implementation ----------------------------
 
-  error init(stream_oriented::lower_layer* down,
-             const settings& config) override;
+  error start(stream_oriented::lower_layer* down,
+              const settings& config) override;
 
   void abort(const error& reason) override;
 

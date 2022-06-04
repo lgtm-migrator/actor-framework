@@ -127,7 +127,7 @@ void stream_transport::shutdown() {
 
 // -- implementation of transport ----------------------------------------------
 
-error stream_transport::init(socket_manager* owner, const settings& config) {
+error stream_transport::start(socket_manager* owner, const settings& config) {
   parent_ = owner;
   namespace mm = defaults::middleman;
   auto default_max_reads = static_cast<uint32_t>(mm::max_consecutive_reads);
@@ -145,7 +145,11 @@ error stream_transport::init(socket_manager* owner, const settings& config) {
     CAF_LOG_ERROR("send_buffer_size: " << socket_buf_size.error());
     return std::move(socket_buf_size.error());
   }
-  return up_->init(this, config);
+  return up_->start(this, config);
+}
+
+socket stream_transport::handle() const {
+  return fd_;
 }
 
 void stream_transport::handle_read_event() {

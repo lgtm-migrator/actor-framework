@@ -110,9 +110,8 @@ error multiplexer::init() {
   if (!pipe_handles)
     return std::move(pipe_handles.error());
   auto updater = pollset_updater::make(pipe_handles->first);
-  auto mgr = socket_manager::make(this, pipe_handles->first,
-                                  std::move(updater));
-  if (auto err = mgr->init(settings{}))
+  auto mgr = socket_manager::make(this, std::move(updater));
+  if (auto err = mgr->start(settings{}))
     return err;
   write_handle_ = pipe_handles->second;
   pollset_.emplace_back(pollfd{pipe_handles->first.id, input_mask, 0});
@@ -182,12 +181,12 @@ void multiplexer::watch(disposable what) {
 
 // -- thread-safe signaling ----------------------------------------------------
 
-void multiplexer::init(socket_manager_ptr mgr) {
+void multiplexer::start(socket_manager_ptr mgr) {
   CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
   if (std::this_thread::get_id() == tid_) {
-    do_init(mgr);
+    do_start(mgr);
   } else {
-    write_to_pipe(pollset_updater::code::init_manager, mgr.release());
+    write_to_pipe(pollset_updater::code::start_manager, mgr.release());
   }
 }
 
@@ -455,14 +454,14 @@ void multiplexer::do_shutdown() {
   apply_updates();
 }
 
-void multiplexer::do_init(const socket_manager_ptr& mgr) {
+void multiplexer::do_start(const socket_manager_ptr& mgr) {
   CAF_LOG_TRACE(CAF_ARG2("socket", mgr->handle().id));
   if (!shutting_down_) {
     error err;
     if (owner_)
-      err = mgr->init(content(system().config()));
+      err = mgr->start(content(system().config()));
     else
-      err = mgr->init(settings{});
+      err = mgr->start(settings{});
     if (err) {
       CAF_LOG_DEBUG("mgr->init failed: " << err);
       // The socket manager should not register itself for any events if

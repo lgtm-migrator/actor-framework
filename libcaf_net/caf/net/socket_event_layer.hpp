@@ -16,8 +16,11 @@ class CAF_NET_EXPORT socket_event_layer {
 public:
   virtual ~socket_event_layer();
 
-  /// Initializes the layer.
-  virtual error init(socket_manager* owner, const settings& cfg) = 0;
+  /// Starts processing on this layer.
+  virtual error start(socket_manager* owner, const settings& cfg) = 0;
+
+  /// Returns the handle for the managed socket.
+  virtual socket handle() const = 0;
 
   /// Handles a read event on the managed socket.
   virtual void handle_read_event() = 0;

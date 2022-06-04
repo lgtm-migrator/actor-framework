@@ -64,7 +64,7 @@ public:
 
   void abort(const error& reason) override;
 
-  error init(net::http::lower_layer* down, const settings& config) override;
+  error start(net::http::lower_layer* down, const settings& config) override;
 
   ptrdiff_t consume(const net::http::header& hdr,
                     const_byte_span payload) override;
@@ -89,7 +89,7 @@ public:
     // nop
   }
 
-  error init(net::socket_manager*, const settings&) {
+  error start(net::socket_manager*, const settings&) {
     return none;
   }
 
@@ -98,7 +98,7 @@ public:
     auto app = http_flow_adapter::make(mpx, producer_);
     auto serv = net::http::server::make(std::move(app));
     auto transport = Transport::make(fd, std::move(serv));
-    auto res = net::socket_manager::make(mpx, fd, std::move(transport));
+    auto res = net::socket_manager::make(mpx, std::move(transport));
     mpx->watch(res->as_disposable());
     return res;
   }
@@ -139,8 +139,8 @@ disposable serve(actor_system& sys, Socket fd,
     auto producer = detail::http_request_producer::make(std::move(buf));
     auto factory = factory_t{std::move(producer)};
     auto impl = impl_t::make(fd, limit, std::move(factory));
-    auto ptr = socket_manager::make(&mpx, fd, std::move(impl));
-    mpx.init(ptr);
+    auto ptr = socket_manager::make(&mpx, std::move(impl));
+    mpx.start(ptr);
     return ptr->as_disposable();
   } else {
     return disposable{};

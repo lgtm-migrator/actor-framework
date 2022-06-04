@@ -35,7 +35,7 @@ public:
 
   // -- interface functions ----------------------------------------------------
 
-  error init(socket_manager* owner, const settings& cfg) override {
+  error start(socket_manager* owner, const settings& cfg) override {
     owner_ = owner;
     cfg_ = cfg;
     owner->register_writing();
@@ -102,7 +102,7 @@ public:
 
   bool do_handover(std::unique_ptr<socket_event_layer>& next) override {
     next = transport::make(std::move(policy_.conn), std::move(up_));
-    if (auto err = next->init(owner_, cfg_))
+    if (auto err = next->start(owner_, cfg_))
       return false;
     else
       return true;

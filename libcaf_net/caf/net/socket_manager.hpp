@@ -37,7 +37,7 @@ public:
 
   /// @pre `handle != invalid_socket`
   /// @pre `mpx!= nullptr`
-  socket_manager(multiplexer* mpx, socket handle, event_handler_ptr handler);
+  socket_manager(multiplexer* mpx, event_handler_ptr handler);
 
   ~socket_manager() override;
 
@@ -47,8 +47,7 @@ public:
 
   // -- factories --------------------------------------------------------------
 
-  static socket_manager_ptr make(multiplexer* mpx, socket handle,
-                                 event_handler_ptr handler);
+  static socket_manager_ptr make(multiplexer* mpx, event_handler_ptr handler);
 
   // -- properties -------------------------------------------------------------
 
@@ -127,8 +126,8 @@ public:
 
   // -- callbacks for the multiplexer ------------------------------------------
 
-  /// Initializes the manager and its all of its sub-components.
-  error init(const settings& cfg);
+  /// Starts the manager and its all of its processing layers.
+  error start(const settings& cfg);
 
   /// Called whenever the socket received new data.
   void handle_read_event();

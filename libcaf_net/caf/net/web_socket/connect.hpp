@@ -36,8 +36,8 @@ void connect(actor_system& sys, Socket fd, handshake hs, Init init) {
   auto bridge = flow_bridge<trait_t>::make(mpx, std::move(conn));
   auto impl = client::make(std::move(hs), std::move(bridge));
   auto transport = Transport::make(fd, std::move(impl));
-  auto ptr = socket_manager::make(mpx, fd, std::move(transport));
-  mpx->init(ptr);
+  auto ptr = socket_manager::make(mpx, std::move(transport));
+  mpx->start(ptr);
   init(connect_event_t{app_pull, app_push});
 }
 

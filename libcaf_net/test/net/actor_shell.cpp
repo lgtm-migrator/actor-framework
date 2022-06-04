@@ -38,8 +38,8 @@ public:
     return std::make_unique<app_t>(sys, std::move(loop), std::move(hdl));
   }
 
-  error init(net::stream_oriented::lower_layer* down,
-             const settings&) override {
+  error start(net::stream_oriented::lower_layer* down,
+              const settings&) override {
     this->down = down;
     self->set_behavior([this](std::string& line) {
       CAF_MESSAGE("received an asynchronous message: " << line);
@@ -196,8 +196,8 @@ CAF_TEST(actor shells expose their mailbox to their owners) {
   auto app_uptr = app_t::make(sys, mpx);
   auto app = app_uptr.get();
   auto transport = net::stream_transport::make(fd, std::move(app_uptr));
-  auto mgr = net::socket_manager::make(mpx.get(), fd, std::move(transport));
-  if (auto err = mgr->init(content(cfg)))
+  auto mgr = net::socket_manager::make(mpx.get(), std::move(transport));
+  if (auto err = mgr->start(content(cfg)))
     CAF_FAIL("mgr->init() failed: " << err);
   auto hdl = app->self.as_actor();
   anon_send(hdl, "line 1");
@@ -219,9 +219,9 @@ CAF_TEST(actor shells can send requests and receive responses) {
   auto app_uptr = app_t::make(sys, mpx, worker);
   auto app = app_uptr.get();
   auto transport = net::stream_transport::make(fd, std::move(app_uptr));
-  auto mgr = net::socket_manager::make(mpx.get(), fd, std::move(transport));
-  if (auto err = mgr->init(content(cfg)))
-    CAF_FAIL("mgr->init() failed: " << err);
+  auto mgr = net::socket_manager::make(mpx.get(), std::move(transport));
+  if (auto err = mgr->start(content(cfg)))
+    CAF_FAIL("mgr->start() failed: " << err);
   send(input);
   run_while([&] { return app->consumed_bytes != input.size(); });
   expect((int32_t), to(worker).with(123));

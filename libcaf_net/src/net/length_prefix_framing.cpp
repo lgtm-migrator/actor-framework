@@ -24,10 +24,10 @@ length_prefix_framing::make(upper_layer_ptr up) {
 
 // -- implementation of stream_oriented::upper_layer ---------------------------
 
-error length_prefix_framing::init(stream_oriented::lower_layer* down,
-                                  const settings& cfg) {
+error length_prefix_framing::start(stream_oriented::lower_layer* down,
+                                   const settings& cfg) {
   down_ = down;
-  return up_->init(this, cfg);
+  return up_->start(this, cfg);
 }
 
 void length_prefix_framing::abort(const error& reason) {

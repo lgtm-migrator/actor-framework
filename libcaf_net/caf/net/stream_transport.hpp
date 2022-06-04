@@ -155,7 +155,9 @@ public:
 
   // -- implementation of socket_event_layer -----------------------------------
 
-  error init(socket_manager* owner, const settings& config) override;
+  error start(socket_manager* owner, const settings& config) override;
+
+  socket handle() const override;
 
   void handle_read_event() override;
 

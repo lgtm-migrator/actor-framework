@@ -48,7 +48,7 @@ void http_flow_adapter::abort(const error&) {
     pending.dispose();
 }
 
-error http_flow_adapter::init(net::http::lower_layer* down, const settings&) {
+error http_flow_adapter::start(net::http::lower_layer* down, const settings&) {
   down_ = down;
   down_->request_messages();
   return none;

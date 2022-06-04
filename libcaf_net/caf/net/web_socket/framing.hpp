@@ -49,7 +49,7 @@ public:
 
   // -- initialization ---------------------------------------------------------
 
-  void init(stream_oriented::lower_layer* down);
+  void start(stream_oriented::lower_layer* down);
 
   // -- properties -------------------------------------------------------------
 

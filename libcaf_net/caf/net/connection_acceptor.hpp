@@ -40,14 +40,18 @@ public:
 
   // -- implementation of socket_event_layer -----------------------------------
 
-  error init(socket_manager* owner, const settings& cfg) override {
+  error start(socket_manager* owner, const settings& cfg) override {
     CAF_LOG_TRACE("");
     owner_ = owner;
     cfg_ = cfg;
-    if (auto err = factory_.init(owner, cfg))
+    if (auto err = factory_.start(owner, cfg))
       return err;
     owner->register_reading();
     return none;
+  }
+
+  socket handle() const override {
+    return fd_;
   }
 
   void handle_read_event() override {
@@ -60,7 +64,7 @@ public:
         owner_->deregister();
         return;
       }
-      if (auto err = child->init(cfg_)) {
+      if (auto err = child->start(cfg_)) {
         CAF_LOG_ERROR("failed to initialize new child:" << err);
         owner_->deregister();
         return;

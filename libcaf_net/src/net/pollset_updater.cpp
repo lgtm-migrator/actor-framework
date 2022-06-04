@@ -29,11 +29,15 @@ std::unique_ptr<pollset_updater> pollset_updater::make(pipe_socket fd) {
 
 // -- interface functions ------------------------------------------------------
 
-error pollset_updater::init(socket_manager* owner, const settings&) {
+error pollset_updater::start(socket_manager* owner, const settings&) {
   CAF_LOG_TRACE("");
   owner_ = owner;
   mpx_ = owner->mpx_ptr();
   return nonblocking(fd_, true);
+}
+
+socket pollset_updater::handle() const {
+  return fd_;
 }
 
 void pollset_updater::handle_read_event() {
@@ -57,8 +61,8 @@ void pollset_updater::handle_read_event() {
         intptr_t ptr;
         memcpy(&ptr, buf_.data() + 1, sizeof(intptr_t));
         switch (static_cast<code>(opcode)) {
-          case code::init_manager:
-            mpx_->do_init(as_mgr(ptr));
+          case code::start_manager:
+            mpx_->do_start(as_mgr(ptr));
             break;
           case code::run_action:
             run_action(ptr);

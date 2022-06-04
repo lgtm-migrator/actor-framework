@@ -21,7 +21,7 @@ public:
     // nop
   }
 
-  error init(net::socket_manager*, const settings&) {
+  error start(net::socket_manager*, const settings&) {
     return none;
   }
 
@@ -30,7 +30,7 @@ public:
     auto prom_serv = net::prometheus::server::make(ptr_);
     auto http_serv = net::http::server::make(std::move(prom_serv));
     auto transport = Transport::make(fd, std::move(http_serv));
-    return net::socket_manager::make(mpx, fd, std::move(transport));
+    return net::socket_manager::make(mpx, std::move(transport));
   }
 
   void abort(const error&) {
@@ -58,8 +58,8 @@ disposable serve(actor_system& sys, Socket fd) {
   auto state = prometheus::server::scrape_state::make(registry);
   auto factory = factory_t{std::move(state)};
   auto impl = impl_t::make(fd, 0, std::move(factory));
-  auto mgr = socket_manager::make(mpx, fd, std::move(impl));
-  mpx->init(mgr);
+  auto mgr = socket_manager::make(mpx, std::move(impl));
+  mpx->start(mgr);
   return mgr->as_disposable();
 }
 
