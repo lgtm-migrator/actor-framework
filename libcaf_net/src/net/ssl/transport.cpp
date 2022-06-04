@@ -42,6 +42,10 @@ public:
     return caf::none;
   }
 
+  socket handle() const override {
+    return policy_.conn.fd();
+  }
+
   void handle_read_event() override {
     if (auto res = advance_handshake(); res > 0) {
       owner_->deregister();
